@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<defs>
+  <mask id="m">
+    <rect width="200" height="200" fill="white" rx="10"/>
+    <rect x="14" y="14" width="172" height="172" fill="black"/>
+  </mask>
+  
+</defs>
+<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
+<rect width="200" height="200" fill="#e91e63" mask="url(#m)"/>
+<polygon points="7,-2 16,7 7,16 -2,7" fill="#fff"/>
+<polygon points="193,-2 202,7 193,16 184,7" fill="#fff"/>
+<polygon points="7,184 16,193 7,202 -2,193" fill="#fff"/>
+<polygon points="193,184 202,193 193,202 184,193" fill="#fff"/>
+<polygon points="100,-2 109,7 100,16 91,7" fill="#fff"/>
+<polygon points="100,184 109,193 100,202 91,193" fill="#fff"/>
+<polygon points="7,91 16,100 7,109 -2,100" fill="#fff"/>
+<polygon points="193,91 202,100 193,109 184,100" fill="#fff"/>
+</svg>

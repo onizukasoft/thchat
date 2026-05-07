@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<defs>
+  <mask id="m">
+    <rect width="200" height="200" fill="white" rx="10"/>
+    <rect x="14" y="14" width="172" height="172" fill="black"/>
+  </mask>
+  <pattern id="sp" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(90)"><rect width="16" height="16" fill="#f39c12"/><rect width="8" height="16" fill="#e67e22"/></pattern>
+</defs>
+<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
+<rect width="200" height="200" fill="url(#sp)" mask="url(#m)"/>
+
+</svg>

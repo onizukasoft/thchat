@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<defs>
+  <mask id="m">
+    <rect width="200" height="200" fill="white" rx="10"/>
+    <rect x="14" y="14" width="172" height="172" fill="black"/>
+  </mask>
+  <pattern id="p" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#fff"/><circle cx="5" cy="5" r="3" fill="#ff6b9d"/></pattern>
+</defs>
+<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
+<rect width="200" height="200" fill="url(#p)" mask="url(#m)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<defs>
+  <mask id="m">
+    <rect width="200" height="200" fill="white" rx="10"/>
+    <rect x="14" y="14" width="172" height="172" fill="black"/>
+  </mask>
+  
+</defs>
+<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
+<rect width="200" height="200" fill="#ff6b9d" mask="url(#m)"/>
+
+</svg>
+</svg>
