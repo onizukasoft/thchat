@@ -1,21 +1,34 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Crown, Check, Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { VIP_PACKAGES } from "@/lib/packages";
+
+type VipPkg = {
+  id: string; name: string; icon: string; level: string;
+  price: number; coins: number; days: number;
+  features: string[]; isActive: boolean;
+};
+
+const COLORS: Record<string, string> = {
+  silver:  "from-gray-400 to-gray-500",
+  gold:    "from-yellow-400 to-orange-500",
+  diamond: "from-blue-400 to-purple-600",
+};
 
 export default function VIPPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const [packages, setPackages] = useState<VipPkg[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/vip/packages").then((r) => r.json()).then(setPackages);
+  }, []);
+
   async function buyVip(packageId: string) {
-    if (!session?.user?.id) {
-      router.push("/login");
-      return;
-    }
+    if (!session?.user?.id) { router.push("/login"); return; }
     setLoading(packageId);
     try {
       const res = await fetch("/api/vip/checkout", {
@@ -24,11 +37,8 @@ export default function VIPPage() {
         body: JSON.stringify({ packageId }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
-      }
+      if (data.url) window.location.href = data.url;
+      else alert(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
     } catch {
       alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
@@ -44,50 +54,57 @@ export default function VIPPage() {
         <p className="text-gray-500 text-sm mt-1">ปลดล็อคฟีเจอร์พิเศษและสิทธิพิเศษสุดคุ้ม</p>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
-        {VIP_PACKAGES.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative bg-white rounded-2xl border-2 overflow-hidden ${
-              plan.popular ? "border-yellow-400 shadow-lg shadow-yellow-100" : "border-gray-200"
-            }`}
-          >
-            {plan.popular && (
-              <div className="bg-yellow-400 text-white text-xs font-bold text-center py-1">
-                ⭐ ยอดนิยม
-              </div>
-            )}
-            <div className={`bg-gradient-to-br ${plan.color} p-5 text-white text-center`}>
-              <div className="text-3xl mb-1">{plan.icon}</div>
-              <div className="font-bold text-lg">{plan.name}</div>
-              <div className="text-2xl font-bold mt-2">
-                ฿{(plan.price / 100).toLocaleString("th-TH")}
-              </div>
-              <div className="text-xs opacity-80">/ {plan.days} วัน</div>
-            </div>
-            <div className="p-4 space-y-2">
-              {plan.features.map((f) => (
-                <div key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                  <Check className="w-4 h-4 text-green-500 shrink-0" />
-                  {f}
-                </div>
-              ))}
-              <Button
-                className={`w-full mt-3 bg-gradient-to-r ${plan.color} text-white border-0 hover:opacity-90`}
-                onClick={() => buyVip(plan.id)}
-                disabled={loading !== null}
+      {packages.length === 0 ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-4">
+          {packages.map((plan) => {
+            const color = COLORS[plan.level] ?? "from-indigo-400 to-purple-500";
+            return (
+              <div
+                key={plan.id}
+                className={`relative bg-white dark:bg-gray-900 rounded-2xl border-2 overflow-hidden ${
+                  plan.level === "gold" ? "border-yellow-400 shadow-lg shadow-yellow-100" : "border-gray-200 dark:border-gray-700"
+                }`}
               >
-                {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "ซื้อเลย"}
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+                {plan.level === "gold" && (
+                  <div className="bg-yellow-400 text-white text-xs font-bold text-center py-1">
+                    ⭐ ยอดนิยม
+                  </div>
+                )}
+                <div className={`bg-gradient-to-br ${color} p-5 text-white text-center`}>
+                  <div className="text-3xl mb-1">{plan.icon}</div>
+                  <div className="font-bold text-lg">{plan.name}</div>
+                  <div className="text-2xl font-bold mt-2">
+                    ฿{(plan.price / 100).toLocaleString("th-TH")}
+                  </div>
+                  <div className="text-xs opacity-80">/ {plan.days} วัน</div>
+                </div>
+                <div className="p-4 space-y-2">
+                  {plan.features.map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <Check className="w-4 h-4 text-green-500 shrink-0" />
+                      {f}
+                    </div>
+                  ))}
+                  <Button
+                    className={`w-full mt-3 bg-gradient-to-r ${color} text-white border-0 hover:opacity-90`}
+                    onClick={() => buyVip(plan.id)}
+                    disabled={loading !== null}
+                  >
+                    {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "ซื้อเลย"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      <div className="bg-gray-50 rounded-xl border p-4 flex items-start gap-3 text-sm text-gray-500">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-3 text-sm text-gray-500">
         <Shield className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-gray-700">ชำระเงินปลอดภัยผ่าน Stripe</p>
+          <p className="font-medium text-gray-700 dark:text-gray-200">ชำระเงินปลอดภัยผ่าน Stripe</p>
           <p className="text-xs mt-0.5">VIP เริ่มต้นทันทีหลังชำระเงิน · เหรียญเข้าบัญชีภายใน 1–2 นาที · ต่ออายุได้ (ระยะเวลาต่อจากวันหมดอายุเดิม)</p>
         </div>
       </div>

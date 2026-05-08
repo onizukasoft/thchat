@@ -2,15 +2,16 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   User, Coins, Edit, Gift, Heart, Users, Package, Star,
-  RefreshCw, Moon, Sun, Globe, Smartphone, Bell, LogOut, ChevronRight, Trophy, LayoutDashboard,
+  RefreshCw, Moon, Sun, Globe, Smartphone, Bell, LogOut, ChevronRight, Trophy, X,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { useEffect, useState } from "react";
+import { useSidebar } from "@/lib/sidebar-store";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: User, label: "โปรไฟล์ของฉัน", hrefKey: "profile" },
   { icon: Coins, label: "บัญชีเหรียญ", href: "/coins" },
   { icon: Edit, label: "แก้ไขโปรไฟล์", hrefKey: "edit" },
@@ -26,6 +27,19 @@ export function LeftSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const { open, close } = useSidebar();
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetch(`/api/users/${session.user.id}`)
+      .then((r) => r.json())
+      .then((u) => setAvatar(u.avatar ?? null))
+      .catch(() => {});
+  }, [session?.user?.id]);
+
+  // Close drawer on route change
+  useEffect(() => { close(); }, [pathname, close]);
 
   function getHref(item: typeof menuItems[0]) {
     if (item.hrefKey === "profile") return session?.user?.id ? `/profile/${session.user.id}` : "/login";
@@ -34,29 +48,51 @@ export function LeftSidebar() {
   }
 
   return (
-    <aside className="w-[220px] shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0 overflow-y-auto">
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={close}
+        />
+      )}
+
+      {/* Sidebar — desktop: always visible, mobile: slide-in drawer */}
+      <aside className={`
+        w-[220px] shrink-0 bg-white dark:bg-gray-900
+        border-r border-gray-200 dark:border-gray-700
+        flex flex-col h-screen overflow-y-auto
+        md:sticky md:top-0
+        fixed top-0 left-0 z-50
+        transition-transform duration-300 ease-in-out
+        ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
       {/* Logo */}
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="ThChat" className="w-8 h-8 rounded-lg shadow-sm" />
+          <img src="/icon-app.png" alt="ThChat" className="w-8 h-8 object-contain" />
           <span className="font-bold text-lg bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">ThChat</span>
         </Link>
+        <button
+          onClick={close}
+          className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+          aria-label="ปิด"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* User profile */}
       {session?.user ? (
         <div className="px-3 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={session.user.image || ""} />
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-sm font-bold">
-                  {session.user.name?.[0]?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
-            </div>
+            <UserAvatar
+              src={avatar ?? session.user.image}
+              fallback={session.user.name?.[0] || "U"}
+              className="w-10 h-10"
+              online={true}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{session.user.name}</p>
               <p className="text-xs text-gray-400 truncate">@{session.user.email?.split("@")[0]}</p>
@@ -131,5 +167,6 @@ export function LeftSidebar() {
         <p className="text-xs text-gray-400">เวอร์ชัน 1.0.0</p>
       </div>
     </aside>
+    </>
   );
 }

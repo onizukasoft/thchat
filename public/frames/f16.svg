@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  <pattern id="sp" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(90)"><rect width="16" height="16" fill="#f39c12"/><rect width="8" height="16" fill="#e67e22"/></pattern>
+  <linearGradient id="g16" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#94a3b8"/><stop offset="30%" stop-color="#e2e8f0"/>
+    <stop offset="60%" stop-color="#64748b"/><stop offset="100%" stop-color="#cbd5e1"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="url(#sp)" mask="url(#m)"/>
-
+<rect x="2" y="2" width="196" height="196" rx="12" ry="12" fill="none" stroke="url(#g16)" stroke-width="4.5"/>
+<rect x="7.5" y="7.5" width="185.0" height="185.0" rx="9" ry="9" fill="none" stroke="rgba(226,232,240,0.7)" stroke-width="1.5" stroke-dasharray="6,4"/>
+<polyline points="30,8 8,8 8,30" stroke="#e2e8f0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="170,8 192,8 192,30" stroke="#e2e8f0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,192 8,192 8,170" stroke="#e2e8f0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="170,192 192,192 192,170" stroke="#e2e8f0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="14" cy="14" r="3" fill="#cbd5e1"/><circle cx="186" cy="14" r="3" fill="#cbd5e1"/>
+<circle cx="14" cy="186" r="3" fill="#cbd5e1"/><circle cx="186" cy="186" r="3" fill="#cbd5e1"/>
 </svg>

@@ -1,12 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  <pattern id="ck" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#e74c3c"/><rect x="0" y="0" width="10" height="10" fill="#fff"/><rect x="10" y="10" width="10" height="10" fill="#fff"/></pattern>
+  <linearGradient id="g12a" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#f43f5e"/><stop offset="16.6%" stop-color="#f97316"/>
+    <stop offset="33.3%" stop-color="#fbbf24"/><stop offset="50%" stop-color="#22c55e"/>
+    <stop offset="66.6%" stop-color="#3b82f6"/><stop offset="83.3%" stop-color="#8b5cf6"/>
+    <stop offset="100%" stop-color="#ec4899"/>
+  </linearGradient>
+  <linearGradient id="g12b" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" stop-color="#f43f5e"/><stop offset="16.6%" stop-color="#f97316"/>
+    <stop offset="33.3%" stop-color="#fbbf24"/><stop offset="50%" stop-color="#22c55e"/>
+    <stop offset="66.6%" stop-color="#3b82f6"/><stop offset="83.3%" stop-color="#8b5cf6"/>
+    <stop offset="100%" stop-color="#ec4899"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="url(#ck)" mask="url(#m)"/>
-
+<rect x="2" y="2" width="196" height="4" rx="2" fill="url(#g12a)"/>
+<rect x="2" y="194" width="196" height="4" rx="2" fill="url(#g12a)"/>
+<rect x="2" y="2" width="4" height="196" rx="2" fill="url(#g12b)"/>
+<rect x="194" y="2" width="4" height="196" rx="2" fill="url(#g12b)"/>
+<polyline points="29,7 7,7 7,29" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="171,7 193,7 193,29" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="29,193 7,193 7,171" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="171,193 193,193 193,171" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

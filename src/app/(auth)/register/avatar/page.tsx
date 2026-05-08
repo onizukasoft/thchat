@@ -66,7 +66,7 @@ function AvatarSetup() {
               {displayName[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             {uploading
               ? <Loader2 className="w-7 h-7 text-white animate-spin" />
               : <Camera className="w-7 h-7 text-white" />}

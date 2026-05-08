@@ -52,7 +52,8 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2">
-          <div className="text-4xl mb-2">💬</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="ThChat" className="w-24 h-24 object-contain mx-auto mb-2" />
           <CardTitle className="text-2xl font-bold text-purple-700">สมัครสมาชิก ThChat</CardTitle>
           <p className="text-gray-500 text-sm">เข้าร่วมชุมชนของเรา</p>
         </CardHeader>

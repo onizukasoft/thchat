@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  <pattern id="sp" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#e91e63"/><rect width="6" height="12" fill="#c2185b"/></pattern>
+  <linearGradient id="g19" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#c2410c"/><stop offset="25%" stop-color="#ea580c"/>
+    <stop offset="50%" stop-color="#fb923c"/><stop offset="75%" stop-color="#c2410c"/><stop offset="100%" stop-color="#9a3412"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="url(#sp)" mask="url(#m)"/>
-
+<rect x="2" y="2" width="196" height="196" rx="12" ry="12" fill="none" stroke="url(#g19)" stroke-width="5"/>
+<rect x="8" y="8" width="184" height="184" rx="9" ry="9" fill="none" stroke="rgba(251,146,60,0.4)" stroke-width="1.5" stroke-dasharray="6,4"/>
+<polyline points="30,8 8,8 8,30" stroke="#fb923c" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="170,8 192,8 192,30" stroke="#fb923c" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,192 8,192 8,170" stroke="#fb923c" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="170,192 192,192 192,170" stroke="#fb923c" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="14" cy="14" r="3.5" fill="#fb923c"/><circle cx="14" cy="14" r="1.5" fill="#fed7aa"/>
+<circle cx="186" cy="14" r="3.5" fill="#fb923c"/><circle cx="186" cy="14" r="1.5" fill="#fed7aa"/>
+<circle cx="14" cy="186" r="3.5" fill="#fb923c"/><circle cx="14" cy="186" r="1.5" fill="#fed7aa"/>
+<circle cx="186" cy="186" r="3.5" fill="#fb923c"/><circle cx="186" cy="186" r="1.5" fill="#fed7aa"/>
 </svg>

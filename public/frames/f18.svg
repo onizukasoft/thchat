@@ -1,12 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  <pattern id="p" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#27ae60"/><circle cx="4" cy="4" r="3" fill="#fff"/></pattern>
+  <linearGradient id="g18" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#f0abfc"/><stop offset="33%" stop-color="#c084fc"/>
+    <stop offset="66%" stop-color="#f9a8d4"/><stop offset="100%" stop-color="#a5b4fc"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="url(#p)" mask="url(#m)"/>
-
+<rect x="2" y="2" width="196" height="196" rx="16" ry="16" fill="none" stroke="url(#g18)" stroke-width="4"/>
+<rect x="7" y="7" width="186" height="186" rx="13" ry="13" fill="none" stroke="rgba(240,171,252,0.5)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<polyline points="27,9 9,9 9,27" stroke="#f0abfc" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="173,9 191,9 191,27" stroke="#f0abfc" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="27,191 9,191 9,173" stroke="#f0abfc" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="173,191 191,191 191,173" stroke="#f0abfc" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="100" cy="3.5" r="2.5" fill="#fda4af"/>
+<circle cx="93" cy="5" r="1.5" fill="#c084fc"/><circle cx="107" cy="5" r="1.5" fill="#c084fc"/>
+<circle cx="100" cy="196.5" r="2.5" fill="#fda4af"/>
+<circle cx="93" cy="195" r="1.5" fill="#c084fc"/><circle cx="107" cy="195" r="1.5" fill="#c084fc"/>
+<circle cx="3.5" cy="100" r="2.5" fill="#fda4af"/>
+<circle cx="5" cy="93" r="1.5" fill="#c084fc"/><circle cx="5" cy="107" r="1.5" fill="#c084fc"/>
+<circle cx="196.5" cy="100" r="2.5" fill="#fda4af"/>
+<circle cx="195" cy="93" r="1.5" fill="#c084fc"/><circle cx="195" cy="107" r="1.5" fill="#c084fc"/>
 </svg>

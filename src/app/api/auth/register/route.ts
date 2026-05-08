@@ -4,12 +4,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const schema = z.object({
-  username: z.string().min(3).max(20),
-  email: z.string().email(),
-  password: z.string().min(6),
+  username: z.string().min(3, "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร").max(20, "ชื่อผู้ใช้ยาวเกิน 20 ตัวอักษร"),
+  email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง"),
+  password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"),
   nickname: z.string().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
-  age: z.number().int().min(13).max(100).optional(),
+  age: z.number().int().min(13, "ต้องมีอายุ 13 ปีขึ้นไป").max(100, "อายุไม่ถูกต้อง").optional(),
 });
 
 export async function POST(req: NextRequest) {

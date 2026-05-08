@@ -8,9 +8,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const post = await prisma.post.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, username: true, nickname: true, avatar: true } },
+      user: { select: { id: true, username: true, nickname: true, avatar: true, profileFrameId: true, showProfileFrame: true } },
       comments: {
-        include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } },
+        include: { user: { select: { id: true, username: true, nickname: true, avatar: true, profileFrameId: true, showProfileFrame: true } } },
         orderBy: { createdAt: "asc" },
       },
     },

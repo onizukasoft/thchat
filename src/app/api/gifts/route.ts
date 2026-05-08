@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { HEART_REDEEM_OFFERS } from "@/lib/heart-redeem";
 
 const GIFT_PRICES: Record<string, number> = {
   flower: 10, heart: 20, candy: 30, ring: 100, car: 500, diamond: 1000,
@@ -8,15 +9,43 @@ const GIFT_PRICES: Record<string, number> = {
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json([], { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
-  const gifts = await prisma.gift.findMany({
-    where: { receiverId: session.user.id },
-    include: { sender: { select: { id: true, username: true, nickname: true, avatar: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 50,
+  const uid = session.user.id;
+
+  const [gifts, heartsAgg, me] = await Promise.all([
+    prisma.gift.findMany({
+      where: { receiverId: uid },
+      include: { sender: { select: { id: true, username: true, nickname: true, avatar: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.heartVote.aggregate({
+      where: { toUserId: uid },
+      _sum: { amount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: uid },
+      select: { coins: true, voteTotalScore: true, profileHeartsSpent: true },
+    }),
+  ]);
+
+  const heartsReceivedTotal = heartsAgg._sum.amount ?? 0;
+  const profileHeartsSpent = me?.profileHeartsSpent ?? 0;
+  const heartsAvailable = Math.max(0, heartsReceivedTotal - profileHeartsSpent);
+
+  return NextResponse.json({
+    gifts,
+    /** ยอดหัวใจรวมที่ได้จากโปรไฟล์ (HeartVote) */
+    heartsReceivedTotal,
+    /** หัวใจที่ใช้แลกรางวัลไปแล้ว */
+    profileHeartsSpent,
+    /** หัวใจที่เหลือแลกได้ */
+    heartsAvailable,
+    coins: me?.coins ?? 0,
+    voteTotalScore: me?.voteTotalScore ?? 0,
+    redeemOffers: HEART_REDEEM_OFFERS,
   });
-  return NextResponse.json(gifts);
 }
 
 export async function POST(req: NextRequest) {

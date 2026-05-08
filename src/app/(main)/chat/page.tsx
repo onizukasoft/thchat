@@ -1,0 +1,123 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { UserAvatar } from "@/components/user-avatar";
+import { formatDistanceToNow } from "date-fns";
+import { th } from "date-fns/locale";
+import { MessageCircle, Search } from "lucide-react";
+
+type Conversation = {
+  partner: {
+    id: string;
+    username: string;
+    nickname: string | null;
+    avatar: string | null;
+    isOnline: boolean;
+    profileFrameId?: string | null;
+    showProfileFrame?: boolean;
+  };
+  lastMessage: string;
+  lastMessageAt: string;
+  isRead: boolean;
+};
+
+export default function ChatListPage() {
+  const { data: session } = useSession();
+  const [convs, setConvs] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetch("/api/messages/recent")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setConvs(d); })
+      .finally(() => setLoading(false));
+  }, [session?.user?.id]);
+
+  const filtered = convs.filter((c) => {
+    if (!search) return true;
+    const name = (c.partner.nickname || c.partner.username).toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
+
+  if (!session?.user?.id) {
+    return (
+      <div className="text-center py-20 text-gray-400">
+        <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <p className="text-sm">เข้าสู่ระบบเพื่อดูแชท</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h1 className="text-lg font-bold text-gray-800 dark:text-white">แชท</h1>
+        {convs.filter((c) => !c.isRead).length > 0 && (
+          <span className="bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+            {convs.filter((c) => !c.isRead).length}
+          </span>
+        )}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="ค้นหาการสนทนา..."
+          className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+        />
+      </div>
+
+      {/* List */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {loading ? (
+          <div className="py-12 text-center text-gray-400 text-sm">กำลังโหลด...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center text-gray-400">
+            <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">{search ? "ไม่พบการสนทนา" : "ยังไม่มีการสนทนา"}</p>
+          </div>
+        ) : (
+          filtered.map((c, i) => (
+            <Link
+              key={c.partner.id}
+              href={`/chat/${c.partner.id}`}
+              className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                i > 0 ? "border-t border-gray-100 dark:border-gray-800" : ""
+              }`}
+            >
+              <UserAvatar
+                src={c.partner.avatar}
+                fallback={(c.partner.nickname || c.partner.username)[0]}
+                className="w-12 h-12 shrink-0"
+                online={c.partner.isOnline}
+                frameId={c.partner.showProfileFrame ? c.partner.profileFrameId : null}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm truncate ${!c.isRead ? "font-bold text-gray-900 dark:text-white" : "font-medium text-gray-700 dark:text-gray-300"}`}>
+                    {c.partner.nickname || c.partner.username}
+                  </span>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">
+                    {formatDistanceToNow(new Date(c.lastMessageAt), { addSuffix: false, locale: th })}
+                  </span>
+                </div>
+                <p className={`text-xs truncate mt-0.5 ${!c.isRead ? "text-blue-500 font-medium" : "text-gray-400"}`}>
+                  {c.lastMessage}
+                </p>
+              </div>
+              {!c.isRead && (
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+              )}
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

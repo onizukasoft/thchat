@@ -20,7 +20,7 @@ export async function GET() {
     notifications,
     recentTx,
     topUsers,
-    onlineCount,
+    friendRows,
     totalUsers,
     recentMessages,
   ] = await Promise.all([
@@ -33,7 +33,10 @@ export async function GET() {
     prisma.notification.count({ where: { userId: uid, isRead: false } }),
     prisma.coinTransaction.findMany({ where: { userId: uid }, orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.user.findMany({ orderBy: { coins: "desc" }, take: 5, select: { id: true, nickname: true, username: true, avatar: true, coins: true } }),
-    prisma.user.count({ where: { isOnline: true } }),
+    prisma.follow.findMany({
+      where: { followerId: uid, status: "accepted" },
+      select: { following: { select: { id: true, nickname: true, username: true, avatar: true, isOnline: true } } },
+    }),
     prisma.user.count(),
     prisma.message.findMany({
       where: { OR: [{ senderId: uid }, { receiverId: uid }] },
@@ -60,8 +63,8 @@ export async function GET() {
     },
     recentTx,
     topUsers,
-    onlineCount,
-    totalUsers,
+    onlineFriends: friendRows.map((r) => r.following).filter((f) => f.isOnline),
+    totalFriends: friendRows.length,
     recentMessages,
   });
 }

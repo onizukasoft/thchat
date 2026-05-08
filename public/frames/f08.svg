@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  <linearGradient id="g" x1="0" y1="0" x2="1 0 0 1"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#d35400"/></linearGradient>
+  <linearGradient id="g8" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#fbbf24"/><stop offset="30%" stop-color="#f59e0b"/>
+    <stop offset="70%" stop-color="#d97706"/><stop offset="100%" stop-color="#fbbf24"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="url(#g)" mask="url(#m)"/>
-<circle cx="14" cy="14" r="14" fill="#fff" opacity="0.4"/>
-<circle cx="186" cy="14" r="14" fill="#fff" opacity="0.4"/>
-<circle cx="14" cy="186" r="14" fill="#fff" opacity="0.4"/>
-<circle cx="186" cy="186" r="14" fill="#fff" opacity="0.4"/>
+<rect x="2" y="2" width="196" height="196" rx="12" ry="12" fill="none" stroke="url(#g8)" stroke-width="5"/>
+<rect x="8" y="8" width="184" height="184" rx="9" ry="9" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="1.5" stroke-dasharray="3,5"/>
+<polyline points="33,7 7,7 7,33" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="167,7 193,7 193,33" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="33,193 7,193 7,167" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="167,193 193,193 193,167" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="14" cy="14" r="3.5" fill="#fbbf24"/><circle cx="186" cy="14" r="3.5" fill="#fbbf24"/>
+<circle cx="14" cy="186" r="3.5" fill="#fbbf24"/><circle cx="186" cy="186" r="3.5" fill="#fbbf24"/>
+<circle cx="14" cy="14" r="1.5" fill="#fef9c3"/><circle cx="186" cy="14" r="1.5" fill="#fef9c3"/>
+<circle cx="14" cy="186" r="1.5" fill="#fef9c3"/><circle cx="186" cy="186" r="1.5" fill="#fef9c3"/>
 </svg>

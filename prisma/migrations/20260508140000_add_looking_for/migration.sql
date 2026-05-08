@@ -1,0 +1,2 @@
+ALTER TABLE "User" ADD COLUMN "lookingFor" TEXT;
+ALTER TABLE "User" ADD COLUMN "hashtags" TEXT;

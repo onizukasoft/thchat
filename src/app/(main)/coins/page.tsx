@@ -5,9 +5,194 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { COIN_PACKAGES, VIP_PACKAGES, ADDON_PACKAGES } from "@/lib/packages";
+import { COIN_PACKAGES, ADDON_PACKAGES } from "@/lib/packages";
 
-type Tab = "coins" | "monthly" | "addon" | "earn";
+type VipPkg = {
+  id: string; name: string; icon: string; level: string;
+  price: number; coins: number; days: number; features: string[];
+};
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
+
+type Tab = "coins" | "monthly" | "addon" | "earn" | "wallet";
+
+type TxType = { id: string; amount: number; type: string; description: string; createdAt: string };
+type WalletData = {
+  balance: number;
+  earned: number;
+  purchased: number;
+  groups: Record<string, TxType[]>;
+  expiring: TxType[];
+};
+
+const TX_ICON: Record<string, string> = {
+  earn: "🪙",
+  purchase: "💳",
+  gift_send: "🎁",
+  gift_receive: "🎁",
+  heart_redeem: "❤️",
+  spend: "💸",
+};
+
+function WalletTab({ walletMode }: { walletMode: "list" | "expiring" }) {
+  const [data, setData] = useState<WalletData | null>(null);
+  const [period, setPeriod] = useState<"day" | "month">("day");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/coins/wallet?mode=${period}`)
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoading(false); });
+  }, [period]);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
+  if (!data) return null;
+
+  if (walletMode === "expiring") {
+    return (
+      <div className="divide-y">
+        {data.expiring.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-sm">ไม่มีเหรียญที่กำลังจะหมดอายุ</div>
+        ) : (
+          data.expiring.map((tx) => (
+            <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="text-xl">{TX_ICON[tx.type] ?? "🪙"}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{tx.description}</p>
+                <p className="text-xs text-gray-400">{format(new Date(tx.createdAt), "d MMM yyyy HH:mm", { locale: th })}</p>
+              </div>
+              <span className="text-sm font-bold text-yellow-600">+{tx.amount.toLocaleString()}</span>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  const sortedDays = Object.keys(data.groups).sort((a, b) => b.localeCompare(a));
+
+  return (
+    <>
+      <div className="flex justify-end px-4 py-2 border-b gap-2">
+        {(["day", "month"] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              period === p ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            {period === p && <span className="text-blue-500">✓</span>}
+            {p === "day" ? "วัน" : "เดือน"}
+          </button>
+        ))}
+      </div>
+      <div>
+        {sortedDays.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-sm">ยังไม่มีรายการ</div>
+        ) : (
+          sortedDays.map((day) => {
+            const txs = data.groups[day];
+            const dayDate = new Date(day);
+            const label = period === "month"
+              ? format(dayDate, "MMMM yyyy", { locale: th })
+              : format(dayDate, "d MMMM yyyy", { locale: th });
+            const dayTotal = txs.reduce((s, t) => s + t.amount, 0);
+            return (
+              <div key={day}>
+                <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b">
+                  <span className="text-sm font-medium text-blue-800">{label}</span>
+                  <button className="w-6 h-6 flex items-center justify-center rounded-full border border-blue-200 text-blue-400 text-xs">i</button>
+                </div>
+                {txs.map((tx) => (
+                  <div key={tx.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-0 hover:bg-gray-50">
+                    <div className="w-9 h-9 rounded-full bg-yellow-100 flex items-center justify-center text-lg shrink-0">
+                      {TX_ICON[tx.type] ?? "🪙"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{tx.description}</p>
+                      {period === "day" && (
+                        <p className="text-xs text-gray-400">{format(new Date(tx.createdAt), "HH:mm", { locale: th })}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-1 text-sm font-bold">
+                        <span className={tx.amount >= 0 ? "text-green-600" : "text-red-500"}>
+                          {tx.amount >= 0 ? "+" : ""}{tx.amount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
+  );
+}
+
+function WalletPage() {
+  const [inner, setInner] = useState<"list" | "expiring" | "payouts">("list");
+  const [data, setData] = useState<WalletData | null>(null);
+
+  useEffect(() => {
+    fetch("/api/coins/wallet?mode=day")
+      .then((r) => r.json())
+      .then(setData);
+  }, []);
+
+  const balance = data?.balance ?? 0;
+  const earned = data?.earned ?? 0;
+  const purchased = data?.purchased ?? 0;
+
+  return (
+    <div>
+      {/* Header summary */}
+      <div className="px-5 py-5 bg-white border-b space-y-3">
+        <p className="text-sm text-gray-500 text-center">จำนวนเหรียญทั้งหมด</p>
+        <p className="text-4xl font-bold text-center text-gray-900">{balance.toLocaleString()}</p>
+        <div className="flex justify-center gap-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-white text-sm font-bold">$</div>
+            <span className="text-lg font-semibold text-gray-800">{earned.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">$</div>
+            <span className="text-lg font-semibold text-gray-800">{purchased.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Inner tabs */}
+      <div className="flex border-b bg-white">
+        {([
+          { key: "list", label: "รายการ" },
+          { key: "expiring", label: `จะหมดอายุ (${data?.expiring.length ?? 0})` },
+          { key: "payouts", label: "payouts (0)" },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setInner(t.key)}
+            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+              inner === t.key ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {inner === "list" && <WalletTab walletMode="list" />}
+      {inner === "expiring" && <WalletTab walletMode="expiring" />}
+      {inner === "payouts" && (
+        <div className="text-center py-10 text-gray-400 text-sm">ยังไม่มีรายการถอนเหรียญ</div>
+      )}
+    </div>
+  );
+}
 
 type TaskStatus = { claimable: boolean; hasAvatar?: boolean; hasBio?: boolean; claimedToday?: number };
 type Tasks = Record<string, TaskStatus>;
@@ -59,7 +244,7 @@ const PAYMENT_LOGOS = [
 export default function CoinsPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("coins");
+  const [tab, setTab] = useState<Tab>("wallet");
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Tasks>({});
@@ -67,6 +252,7 @@ export default function CoinsPage() {
   const [taskMsg, setTaskMsg] = useState<{ text: string; earned?: number } | null>(null);
   const [watchingAd, setWatchingAd] = useState(false);
   const [adReady, setAdReady] = useState(false);
+  const [vipPackages, setVipPackages] = useState<VipPkg[]>([]);
 
   const fetchEarn = useCallback(async () => {
     const [coinsRes, earnRes] = await Promise.all([fetch("/api/coins"), fetch("/api/coins/earn")]);
@@ -76,8 +262,11 @@ export default function CoinsPage() {
 
   useEffect(() => {
     if (tab === "earn") fetchEarn();
-    else fetch("/api/coins").then((r) => r.json()).then((d) => setBalance(d.balance ?? 0));
-  }, [tab, fetchEarn]);
+    else if (tab !== "wallet") fetch("/api/coins").then((r) => r.json()).then((d) => setBalance(d.balance ?? 0));
+    if (tab === "monthly" && vipPackages.length === 0) {
+      fetch("/api/vip/packages").then((r) => r.json()).then(setVipPackages);
+    }
+  }, [tab, fetchEarn, vipPackages.length]);
 
   async function checkout(endpoint: string, packageId: string) {
     if (!session?.user?.id) { router.push("/login"); return; }
@@ -104,6 +293,7 @@ export default function CoinsPage() {
   async function claimAd() { setWatchingAd(false); setAdReady(false); await claimTask("watch_ad"); }
 
   const TABS: { key: Tab; label: string }[] = [
+    { key: "wallet", label: "บัญชีเหรียญ" },
     { key: "coins", label: "เติมเหรียญ" },
     { key: "monthly", label: "แพ็คเกจเดือน" },
     { key: "addon", label: "แพ็คเกจเสริม" },
@@ -138,6 +328,9 @@ export default function CoinsPage() {
             </button>
           ))}
         </div>
+
+        {/* === บัญชีเหรียญ === */}
+        {tab === "wallet" && <WalletPage />}
 
         {/* === เติมเหรียญ === */}
         {tab === "coins" && (
@@ -216,44 +409,56 @@ export default function CoinsPage() {
         {tab === "monthly" && (
           <div className="p-5 space-y-4">
             <h2 className="text-lg font-bold text-center">แพ็คเกจ VIP รายเดือน</h2>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {VIP_PACKAGES.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`relative rounded-2xl border-2 overflow-hidden ${
-                    plan.popular ? "border-yellow-400 shadow-lg" : "border-gray-200"
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="bg-yellow-400 text-white text-xs font-bold text-center py-1">
-                      ⭐ ยอดนิยม
-                    </div>
-                  )}
-                  <div className={`bg-gradient-to-br ${plan.color} p-4 text-white text-center`}>
-                    <div className="text-2xl mb-1">{plan.icon}</div>
-                    <div className="font-bold">{plan.name}</div>
-                    <div className="text-xl font-bold mt-1">
-                      ฿{(plan.price / 100).toLocaleString("th-TH")}
-                    </div>
-                    <div className="text-xs opacity-80">/ {plan.days} วัน</div>
-                  </div>
-                  <div className="p-3 space-y-1.5 bg-white">
-                    {plan.features.map((f) => (
-                      <p key={f} className="text-xs text-gray-600 flex items-start gap-1.5">
-                        <span className="text-green-500 mt-0.5">✓</span> {f}
-                      </p>
-                    ))}
-                    <button
-                      onClick={() => checkout("/api/vip/checkout", plan.id)}
-                      disabled={loading !== null}
-                      className={`w-full mt-2 py-2 rounded-lg text-white text-sm font-bold bg-gradient-to-r ${plan.color} hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center`}
+            {vipPackages.length === 0 ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+            ) : (
+              <div className="grid sm:grid-cols-3 gap-4">
+                {vipPackages.map((plan) => {
+                  const colorMap: Record<string, string> = {
+                    silver: "from-gray-400 to-gray-500",
+                    gold: "from-yellow-400 to-orange-500",
+                    diamond: "from-blue-400 to-purple-600",
+                  };
+                  const color = colorMap[plan.level] ?? "from-indigo-400 to-purple-500";
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`relative rounded-2xl border-2 overflow-hidden ${
+                        plan.level === "gold" ? "border-yellow-400 shadow-lg" : "border-gray-200"
+                      }`}
                     >
-                      {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "ซื้อเลย"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      {plan.level === "gold" && (
+                        <div className="bg-yellow-400 text-white text-xs font-bold text-center py-1">
+                          ⭐ ยอดนิยม
+                        </div>
+                      )}
+                      <div className={`bg-gradient-to-br ${color} p-4 text-white text-center`}>
+                        <div className="text-2xl mb-1">{plan.icon}</div>
+                        <div className="font-bold">{plan.name}</div>
+                        <div className="text-xl font-bold mt-1">
+                          ฿{(plan.price / 100).toLocaleString("th-TH")}
+                        </div>
+                        <div className="text-xs opacity-80">/ {plan.days} วัน</div>
+                      </div>
+                      <div className="p-3 space-y-1.5 bg-white">
+                        {plan.features.map((f) => (
+                          <p key={f} className="text-xs text-gray-600 flex items-start gap-1.5">
+                            <span className="text-green-500 mt-0.5">✓</span> {f}
+                          </p>
+                        ))}
+                        <button
+                          onClick={() => checkout("/api/vip/checkout", plan.id)}
+                          disabled={loading !== null}
+                          className={`w-full mt-2 py-2 rounded-lg text-white text-sm font-bold bg-gradient-to-r ${color} hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center`}
+                        >
+                          {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "ซื้อเลย"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

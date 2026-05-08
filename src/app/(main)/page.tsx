@@ -6,11 +6,14 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getSocket } from "@/lib/socket-client";
 import { haversineKm, formatDistance } from "@/lib/distance";
+import { getFrame } from "@/lib/frames";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
+import { PROVINCES } from "@/lib/provinces";
 import {
   RefreshCw, User, MapPin, Heart, Search, SlidersHorizontal,
-  MessageCircle, Users, X, Loader2, CheckCircle2, UserPlus, ShieldOff,
+  MessageCircle, Users, X, Loader2, CheckCircle2, ShieldOff,
+  BookmarkCheck, RotateCcw,
 } from "lucide-react";
 
 type UserCard = {
@@ -26,10 +29,272 @@ type UserCard = {
   longitude: number | null;
   isOnline: boolean;
   lastSeen: string;
+  profileFrameId: string | null;
+  showProfileFrame: boolean;
+  vipLevel: string | null;
+  lookingFor: string | null;
+  hashtags: string | null;
   distance?: number;
 };
 
-const PAGE_SIZE = 24;
+// ─── Filter Panel (Bottom Sheet) ─────────────────────────────────────────────
+
+const LOOKING_FOR_OPTIONS = [
+  "หาแฟน", "หาเพื่อนคุย", "หาเพื่อนเที่ยว", "หากิ๊ก", "โสด",
+  "หาเพื่อนไลน์", "แชทเปิดกล้อง", "แชทสด", "นัดเจอ", "นัดเดท",
+  "นัดบอด", "ฟิวแฟน",
+];
+
+type FilterState = {
+  genders: string[];       // "female" | "male" | "lgbtq"
+  statuses: string[];      // from LOOKING_FOR_OPTIONS
+  hashtags: string;        // raw input
+  province: string;
+  includeOffline: boolean;
+  showBlurred: boolean;
+};
+
+const DEFAULT_FILTER: FilterState = {
+  genders: [], statuses: [], hashtags: "", province: "",
+  includeOffline: false, showBlurred: false,
+};
+
+function FilterPanel({
+  open,
+  onClose,
+  onApply,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onApply: (f: FilterState) => void;
+}) {
+  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [provinceQuery, setProvinceQuery] = useState("");
+
+  // Load saved filter
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("search_filter");
+      if (saved) setFilter(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  function toggleGender(g: string) {
+    setFilter((f) => ({
+      ...f,
+      genders: f.genders.includes(g) ? f.genders.filter((x) => x !== g) : [...f.genders, g],
+    }));
+  }
+
+  function toggleStatus(s: string) {
+    setFilter((f) => ({
+      ...f,
+      statuses: f.statuses.includes(s) ? f.statuses.filter((x) => x !== s) : [...f.statuses, s],
+    }));
+  }
+
+  function handleSave() {
+    localStorage.setItem("search_filter", JSON.stringify(filter));
+  }
+
+  function handleReset() {
+    setFilter(DEFAULT_FILTER);
+    setProvinceQuery("");
+  }
+
+  const filteredProvinces = PROVINCES.filter((p) =>
+    !provinceQuery || p.toLowerCase().includes(provinceQuery.toLowerCase())
+  );
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      {/* Sheet */}
+      <div className="relative bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700" />
+        </div>
+
+        {/* Title */}
+        <div className="flex items-center justify-between px-5 pb-3 shrink-0">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">ตั้งค่าการค้นหา</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 pb-4 space-y-5">
+
+          {/* Gender */}
+          <div className="space-y-2">
+            <div className="flex gap-3">
+              {[
+                { key: "female", emoji: "♀", label: "หญิง", activeClass: "bg-pink-500 text-white ring-pink-400" },
+                { key: "male",   emoji: "♂", label: "ชาย",  activeClass: "bg-blue-500 text-white ring-blue-400" },
+                { key: "lgbtq",  emoji: "🌈", label: "LGBTQ+", activeClass: "bg-purple-500 text-white ring-purple-400" },
+              ].map(({ key, emoji, label, activeClass }) => {
+                const active = filter.genders.includes(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => toggleGender(key)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+                      active
+                        ? `${activeClass} border-transparent ring-2`
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800"
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-full ${active ? "bg-white/20" : "bg-gray-200 dark:bg-gray-600"} flex items-center justify-center text-xs`}>
+                      {emoji}
+                    </span>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 dark:bg-gray-800" />
+
+          {/* Status chips */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">สถานะ</p>
+            <div className="flex flex-wrap gap-2">
+              {LOOKING_FOR_OPTIONS.map((s) => {
+                const active = filter.statuses.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleStatus(s)}
+                    className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      active
+                        ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 dark:bg-gray-800" />
+
+          {/* Hashtag */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">แฮชแท็ก</p>
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 border border-gray-200 dark:border-gray-700">
+              <span className="text-gray-400 text-sm">#</span>
+              <input
+                value={filter.hashtags}
+                onChange={(e) => setFilter((f) => ({ ...f, hashtags: e.target.value }))}
+                placeholder="เพิ่มแฮชแท็ก"
+                className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
+              />
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 dark:bg-gray-800" />
+
+          {/* Province */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">ที่อยู่</p>
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 border border-gray-200 dark:border-gray-700">
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                value={provinceQuery || filter.province}
+                onChange={(e) => {
+                  setProvinceQuery(e.target.value);
+                  if (!e.target.value) setFilter((f) => ({ ...f, province: "" }));
+                }}
+                placeholder="ค้นหาจังหวัด"
+                className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
+              />
+              {filter.province && (
+                <button onClick={() => { setFilter((f) => ({ ...f, province: "" })); setProvinceQuery(""); }}>
+                  <X className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+              )}
+            </div>
+            {provinceQuery && !filter.province && (
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-lg max-h-40 overflow-y-auto">
+                {filteredProvinces.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">ไม่พบจังหวัด</p>
+                ) : (
+                  filteredProvinces.slice(0, 10).map((p) => (
+                    <button
+                      key={p}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => { setFilter((f) => ({ ...f, province: p })); setProvinceQuery(""); }}
+                    >
+                      {p}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-gray-100 dark:bg-gray-800" />
+
+          {/* Toggles */}
+          <div className="space-y-3">
+            {[
+              { key: "includeOffline" as const, label: "ค้นหาทั้งออนไลน์และออฟไลน์" },
+              { key: "showBlurred" as const, label: "แสดงรูปภาพที่ถูกเบลอ" },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+                <button
+                  onClick={() => setFilter((f) => ({ ...f, [key]: !f[key] }))}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+                    filter[key] ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                    style={{ transform: filter[key] ? "translateX(24px)" : "translateX(0)" }}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer buttons */}
+        <div className="shrink-0 flex gap-2 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+          <button
+            onClick={handleReset}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" /> รีเซ็ต
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <BookmarkCheck className="w-4 h-4" /> ดูบันทึก
+          </button>
+          <button
+            onClick={() => { onApply(filter); onClose(); }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors"
+          >
+            <Search className="w-4 h-4" /> ค้นหา
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PAGE_SIZE = 30;
 
 // ─── Profile Modal ──────────────────────────────────────────────────────────
 
@@ -46,9 +311,6 @@ function ProfileModal({
 }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const [followed, setFollowed] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
-
   const distance =
     myCoords && user.latitude && user.longitude
       ? haversineKm(myCoords.lat, myCoords.lng, user.latitude, user.longitude)
@@ -59,21 +321,6 @@ function ProfileModal({
     return formatDistanceToNow(new Date(user.lastSeen), { addSuffix: false, locale: th });
   })();
 
-  async function handleFollow() {
-    if (!session?.user?.id) { router.push("/login"); return; }
-    setFollowLoading(true);
-    try {
-      const res = await fetch("/api/favorites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetId: user.id }),
-      });
-      const data = await res.json();
-      setFollowed(data.action === "follow");
-    } finally {
-      setFollowLoading(false);
-    }
-  }
 
   function handleBlock() {
     alert(`บล็อก ${user.nickname || user.username} เรียบร้อย`);
@@ -161,19 +408,6 @@ function ProfileModal({
             <span className="text-[11px] text-gray-600">โปรไฟล์</span>
           </Link>
 
-          <button
-            onClick={handleFollow}
-            disabled={followLoading}
-            className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            {followLoading
-              ? <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
-              : <UserPlus className={`w-6 h-6 ${followed ? "text-pink-500" : "text-gray-600"}`} />
-            }
-            <span className={`text-[11px] ${followed ? "text-pink-500" : "text-gray-600"}`}>
-              {followed ? "ติดตามแล้ว" : "เพิ่มเพื่อน"}
-            </span>
-          </button>
 
           <Link
             href={`/chat/${user.id}`}
@@ -205,6 +439,7 @@ export default function HomePage() {
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserCard | null>(null);
 
+  const [onlineTab, setOnlineTab] = useState<"online" | "offline">("online");
   const [genderFilter, setGenderFilter] = useState<"all" | "female" | "male">("all");
   const [locationMode, setLocationMode] = useState(false);
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -213,6 +448,8 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [page, setPage] = useState(1);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterState>(DEFAULT_FILTER);
 
   const savedCoordsRef = useRef(false);
 
@@ -247,14 +484,21 @@ export default function HomePage() {
     );
   }, [saveMyLocation]);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (filter?: FilterState) => {
+    const f = filter ?? activeFilter;
     const params = new URLSearchParams();
     if (genderFilter !== "all") params.set("gender", genderFilter);
+    if (f.genders.length === 1) params.set("gender", f.genders[0]);
+    if (f.province) params.set("province", f.province);
+    if (f.statuses.length) params.set("lookingFor", f.statuses.join(","));
+    if (f.hashtags.trim()) params.set("hashtag", f.hashtags.trim());
+    if (!f.includeOffline) {} // default: show all, tab handles online/offline
     const res = await fetch(`/api/users?${params}`);
     const data: UserCard[] = await res.json();
     setUsers(data);
     setPage(1);
-  }, [genderFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genderFilter, activeFilter]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -288,10 +532,14 @@ export default function HomePage() {
 
   const filtered = sorted.filter((u) => {
     const q = search.toLowerCase();
-    return !q || u.username.toLowerCase().includes(q) || (u.nickname || "").toLowerCase().includes(q);
+    const matchSearch = !q || u.username.toLowerCase().includes(q) || (u.nickname || "").toLowerCase().includes(q);
+    const isOnline = u.isOnline || onlineIds.includes(u.id);
+    const matchTab = onlineTab === "online" ? isOnline : !isOnline;
+    return matchSearch && matchTab;
   });
 
-  const onlineCount = users.filter((u) => u.isOnline || onlineIds.includes(u.id)).length;
+  const onlineCount = users.filter((u) => u.id !== session?.user?.id && (u.isOnline || onlineIds.includes(u.id))).length;
+  const offlineCount = users.filter((u) => u.id !== session?.user?.id && !(u.isOnline || onlineIds.includes(u.id))).length;
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -316,13 +564,23 @@ export default function HomePage() {
     setSearch("");
     setShowSearch(false);
     setLocError("");
+    setActiveFilter(DEFAULT_FILTER);
     savedCoordsRef.current = false;
   }
 
-  const hasFilter = genderFilter !== "all" || locationMode || search;
+  const hasAdvancedFilter = activeFilter.genders.length > 0 || activeFilter.statuses.length > 0
+    || !!activeFilter.hashtags || !!activeFilter.province;
+  const hasFilter = genderFilter !== "all" || locationMode || search || hasAdvancedFilter;
 
   return (
     <div className="space-y-3">
+      {/* Filter Panel */}
+      <FilterPanel
+        open={showFilterPanel}
+        onClose={() => setShowFilterPanel(false)}
+        onApply={(f) => { setActiveFilter(f); fetchUsers(f); }}
+      />
+
       {/* Profile Modal */}
       {selectedUser && (
         <ProfileModal
@@ -333,18 +591,60 @@ export default function HomePage() {
         />
       )}
 
-      {/* Filter bar */}
-      <div className="bg-white rounded-lg border border-gray-200 px-3 py-2">
-        <div className="flex items-center gap-1 flex-wrap">
+      {/* Online / Offline tabs */}
+      <div className="flex bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => { setOnlineTab("online"); setPage(1); }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+            onlineTab === "online"
+              ? "bg-green-50 text-green-600 border-b-2 border-green-500"
+              : "text-gray-400 hover:bg-gray-50"
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-green-400" />
+          ออนไลน์
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${onlineTab === "online" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+            {onlineCount}
+          </span>
+        </button>
+        <button
+          onClick={() => { setOnlineTab("offline"); setPage(1); }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+            onlineTab === "offline"
+              ? "bg-gray-100 text-gray-600 border-b-2 border-gray-400"
+              : "text-gray-400 hover:bg-gray-50"
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-gray-400" />
+          ออฟไลน์
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${onlineTab === "offline" ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-500"}`}>
+            {offlineCount}
+          </span>
+        </button>
+      </div>
 
-          <button onClick={fetchUsers} className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs text-gray-500 hover:bg-gray-50 min-w-[52px]">
+      {/* Filter bar */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {/* Top row: count + clear */}
+        <div className="flex items-center justify-between px-3 pt-1.5 pb-0.5">
+          <span className="text-xs font-medium text-gray-500">{filtered.length} คน</span>
+          {hasFilter && (
+            <button onClick={clearAll} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600">
+              <X className="w-3 h-3" />ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+        {/* Scrollable button row */}
+        <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide px-1 pb-1">
+
+          <button onClick={() => fetchUsers()} className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs text-gray-500 hover:bg-gray-50 shrink-0">
             <RefreshCw className="w-4 h-4 text-gray-400" />
             <span>ไฟฟ้า</span>
           </button>
 
           <button
             onClick={() => toggleGender("female")}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs min-w-[52px] transition-colors ${
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs transition-colors shrink-0 ${
               genderFilter === "female"
                 ? "bg-pink-50 text-pink-500 font-semibold ring-1 ring-pink-300"
                 : "text-gray-500 hover:bg-pink-50 hover:text-pink-400"
@@ -356,7 +656,7 @@ export default function HomePage() {
 
           <button
             onClick={() => toggleGender("male")}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs min-w-[52px] transition-colors ${
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs transition-colors shrink-0 ${
               genderFilter === "male"
                 ? "bg-blue-50 text-blue-500 font-semibold ring-1 ring-blue-300"
                 : "text-gray-500 hover:bg-blue-50 hover:text-blue-400"
@@ -368,7 +668,7 @@ export default function HomePage() {
 
           <button
             onClick={toggleLocation}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs min-w-[52px] transition-colors ${
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs transition-colors shrink-0 ${
               locationMode
                 ? "bg-green-50 text-green-600 font-semibold ring-1 ring-green-300"
                 : "text-gray-500 hover:bg-green-50 hover:text-green-500"
@@ -381,14 +681,14 @@ export default function HomePage() {
             <span>โลเคชัน</span>
           </button>
 
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs text-gray-500 hover:bg-gray-50 min-w-[52px]">
+          <button className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs text-gray-500 hover:bg-gray-50 shrink-0">
             <Heart className="w-4 h-4 text-gray-400" />
             <span>คนโปรด</span>
           </button>
 
           <button
             onClick={() => { setShowSearch((v) => !v); }}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs min-w-[52px] transition-colors ${
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs transition-colors shrink-0 ${
               showSearch || search ? "bg-orange-50 text-orange-500 font-semibold ring-1 ring-orange-300" : "text-gray-500 hover:bg-gray-50"
             }`}
           >
@@ -396,22 +696,20 @@ export default function HomePage() {
             <span>ค้นหา</span>
           </button>
 
-          <button className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs text-gray-500 hover:bg-gray-50 min-w-[52px]">
-            <SlidersHorizontal className="w-4 h-4 text-gray-400" />
+          <button
+            onClick={() => setShowFilterPanel(true)}
+            className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-xs transition-colors shrink-0 ${
+              hasAdvancedFilter
+                ? "bg-blue-50 text-blue-500 font-semibold ring-1 ring-blue-300"
+                : "text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            <SlidersHorizontal className={`w-4 h-4 ${hasAdvancedFilter ? "text-blue-400" : "text-gray-400"}`} />
             <span>ฟังก์ชัน</span>
-          </button>
-
-          <div className="ml-auto flex items-center gap-2">
-            {hasFilter && (
-              <button onClick={clearAll} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600">
-                <X className="w-3 h-3" />ล้าง
-              </button>
+            {hasAdvancedFilter && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full" />
             )}
-            <span className="text-xs text-gray-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              {onlineCount} ออนไลน์
-            </span>
-          </div>
+          </button>
         </div>
 
         {(hasFilter || locError) && (
@@ -438,6 +736,24 @@ export default function HomePage() {
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
                 ⚠ {locError}
                 <button onClick={() => setLocError("")}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {activeFilter.genders.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                {activeFilter.genders.join(" · ")}
+                <button onClick={() => setActiveFilter((f) => ({ ...f, genders: [] }))}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {activeFilter.statuses.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                {activeFilter.statuses.length} สถานะ
+                <button onClick={() => setActiveFilter((f) => ({ ...f, statuses: [] }))}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {activeFilter.province && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
+                📍 {activeFilter.province}
+                <button onClick={() => setActiveFilter((f) => ({ ...f, province: "" }))}><X className="w-3 h-3" /></button>
               </span>
             )}
           </div>
@@ -467,7 +783,7 @@ export default function HomePage() {
           {hasFilter && <button onClick={clearAll} className="mt-2 text-xs text-blue-500 hover:underline">ล้างตัวกรอง</button>}
         </div>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {paged.map((user) => {
             const online = user.isOnline || onlineIds.includes(user.id);
             return (
@@ -492,6 +808,18 @@ export default function HomePage() {
                         </AvatarFallback>
                       </Avatar>
                     </div>
+                  )}
+
+                  {/* Profile frame overlay */}
+                  {user.showProfileFrame && user.profileFrameId && getFrame(user.profileFrameId) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/frames/${user.profileFrameId}.svg`}
+                      alt=""
+                      className="absolute inset-0 w-full h-full pointer-events-none select-none"
+                      style={{ zIndex: 5 }}
+                      aria-hidden
+                    />
                   )}
 
                   {user.distance != null && (

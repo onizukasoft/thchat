@@ -10,15 +10,51 @@ const sarabun = Sarabun({
 });
 
 export const metadata: Metadata = {
-  title: "ThChat - หาเพื่อนคุย",
-  description: "เว็บแชทสังคมออนไลน์ภาษาไทย หาเพื่อน พูดคุย สนุกสนาน",
+  title: "ThChat - แชท หาเพื่อนคุย หาแฟน ออนไลน์ฟรี!",
+  description: "แชท หาเพื่อนคุย หาแฟน ฟรี! แชทออนไลน์ 24 ชั่วโมง พูดคุย แลกเปลี่ยน รับเหรียญ พร้อมกิจกรรมสนุกๆ กับเพื่อนๆ ใน ThChat",
+  keywords: ["แชท", "chat", "หาเพื่อนคุย", "หาแฟน", "แชทออนไลน์", "ห้องแชท", "คุยออนไลน์", "thchat", "ไทยแชท"],
   manifest: "/manifest.json",
   themeColor: "#7c3aed",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    icon: "/icon-app.png",
+    apple: "/icon-app.png",
+    shortcut: "/icon-app.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "ThChat",
+  },
+  openGraph: {
+    type: "website",
+    locale: "th_TH",
+    alternateLocale: "en_US",
+    url: "https://thchat.com",
+    siteName: "ThChat",
+    title: "ThChat - แชท หาเพื่อนคุย หาแฟน ออนไลน์ฟรี!",
+    description: "แชท หาเพื่อนคุย หาแฟน ฟรี! แชทออนไลน์ 24 ชั่วโมง พูดคุย แลกเปลี่ยน รับเหรียญ พร้อมกิจกรรมสนุกๆ กับเพื่อนๆ ใน ThChat",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "ThChat - แชทออนไลน์ภาษาไทย",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ThChat - แชท หาเพื่อนคุย หาแฟน ออนไลน์ฟรี!",
+    description: "แชท หาเพื่อนคุย หาแฟน ฟรี! แชทออนไลน์ 24 ชั่วโมง พูดคุย แลกเปลี่ยน รับเหรียญ พร้อมกิจกรรมสนุกๆ กับเพื่อนๆ ใน ThChat",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
   },
 };
 

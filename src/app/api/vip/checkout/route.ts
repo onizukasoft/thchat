@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { stripe, VIP_PACKAGES } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
   const { packageId } = await req.json();
-  const pkg = VIP_PACKAGES.find((p) => p.id === packageId);
+  const pkg = await prisma.vipPackageSetting.findUnique({ where: { id: packageId, isActive: true } });
   if (!pkg) return NextResponse.json({ error: "ไม่พบแพ็กเกจ" }, { status: 400 });
 
+  const features: string[] = (() => { try { return JSON.parse(pkg.features); } catch { return []; } })();
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3001";
 
   const checkoutSession = await stripe.checkout.sessions.create({
@@ -22,7 +24,7 @@ export async function POST(req: Request) {
           unit_amount: pkg.price,
           product_data: {
             name: `${pkg.name} — ThChat`,
-            description: `${pkg.features.join(" • ")}`,
+            description: features.join(" • "),
             images: [],
           },
         },

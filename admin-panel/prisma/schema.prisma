@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  nickname  String?
+  avatar    String?
+  bio       String?
+  gender    String?  @default("other")
+  age       Int?
+  province  String?
+  latitude  Float?
+  longitude Float?
+  coins     Int      @default(0)
+  coverImage        String?
+  relationship      String?  @default("single")
+  starScore         Int      @default(0)
+  voteMonthScore    Int      @default(0)
+  voteTotalScore    Int      @default(0)
+  vipLevel          String?
+  vipUntil          DateTime?
+  showOnlineStatus  Boolean  @default(true)
+  showProfileFrame  Boolean  @default(false)
+  profileFrameId    String?
+  role              String   @default("user")
+  isBanned          Boolean  @default(false)
+  isOnline          Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sentMessages     Message[]         @relation("SentMessages")
+  receivedMessages Message[]         @relation("ReceivedMessages")
+  roomMessages     RoomMessage[]
+  posts            Post[]
+  comments         Comment[]
+  followers        Follow[]          @relation("Followings")
+  followings       Follow[]          @relation("Followers")
+  rooms            RoomMember[]
+  coinTransactions CoinTransaction[]
+  sentGifts        Gift[]            @relation("GiftSender")
+  receivedGifts    Gift[]            @relation("GiftReceiver")
+  notifications    Notification[]
+  heartsGiven      HeartVote[]       @relation("HeartGiven")
+  heartsReceived   HeartVote[]       @relation("HeartReceived")
+  creatorProfile    CreatorProfile?
+  clipSubscriptions ClipSubscription[]
+  clipPurchases     ClipPurchase[]
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  type       String   @default("text")
+  mediaUrl   String?
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  messages RoomMessage[]
+  members  RoomMember[]
+}
+
+model RoomMessage {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  roomId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomMember {
+  userId   String
+  roomId   String
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roomId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String   @default("general")
+  isPinned  Boolean  @default(false)
+  mediaUrls String?  // JSON array: [{url, type}]
+  views     Int      @default(0)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments Comment[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  status      String   @default("pending") // "pending" | "accepted" | "rejected"
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followings", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+}
+
+model CoinTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int
+  type        String // "earn" | "spend" | "gift_send" | "gift_receive"
+  description String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Gift {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  giftType   String // "flower" | "heart" | "ring" | "car" | "diamond"
+  coins      Int
+  message    String?
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("GiftSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("GiftReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // "message" | "follow" | "gift" | "comment" | "system"
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HeartVote {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  amount     Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("HeartGiven",    fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("HeartReceived", fields: [toUserId],   references: [id], onDelete: Cascade)
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model CreatorProfile {
+  userId       String   @id
+  bio          String?
+  monthlyPrice Int      @default(99)
+  totalEarned  Int      @default(0)
+  withdrawable Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals WithdrawalRequest[]
+  clips       Clip[]
+  subscriptions ClipSubscription[]
+}
+
+
+model Clip {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  videoUrl         String
+  thumbnailUrl     String?
+  isSubscriberOnly Boolean  @default(false)
+  lockedPrice      Int?
+  views            Int      @default(0)
+  creatorId        String
+  createdAt        DateTime @default(now())
+
+  creator   CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+  purchases ClipPurchase[]
+}
+
+model ClipPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  clipId    String
+  price     Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clipId])
+}
+
+model ClipSubscription {
+  id           String   @id @default(cuid())
+  subscriberId String
+  creatorId    String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  subscriber User           @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  creator    CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+
+  @@unique([subscriberId, creatorId])
+}
+
+model VipPackageSetting {
+  id        String  @id  // "vip_silver" | "vip_gold" | "vip_diamond"
+  name      String
+  icon      String
+  level     String
+  price     Int
+  coins     Int
+  days      Int
+  features  String  // JSON array
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model WithdrawalRequest {
+  id        String   @id @default(cuid())
+  creatorId String
+  amount    Int
+  note      String?
+  status    String   @default("pending")
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+}

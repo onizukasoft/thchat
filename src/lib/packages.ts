@@ -54,6 +54,69 @@ export const VIP_PACKAGES = [
 
 export type VipPackageId = typeof VIP_PACKAGES[number]["id"];
 
+// ข้อกำหนดสิทธิ์ตามระดับ VIP
+export const PACKAGE_LIMITS = {
+  free: {
+    chatPerDay: 5,
+    chatPhotos: 0,
+    chatVideos: 0,
+    profilePhotos: 1,
+    pinPosts: 0,
+    coinSpinMinutes: 0,
+    dailyCoins: 0,
+    label: "ฟรี",
+  },
+  vip_basic: {
+    chatPerDay: 50,
+    chatPhotos: 300,
+    chatVideos: 40,
+    profilePhotos: 30,
+    pinPosts: 5,
+    coinSpinMinutes: 55,
+    dailyCoins: 5000,
+    label: "VIP BASIC",
+  },
+  silver: {
+    chatPerDay: 100,
+    chatPhotos: 500,
+    chatVideos: 80,
+    profilePhotos: 50,
+    pinPosts: 10,
+    coinSpinMinutes: 40,
+    dailyCoins: 10000,
+    label: "VIP Silver",
+  },
+  gold: {
+    chatPerDay: 200,
+    chatPhotos: 1000,
+    chatVideos: 200,
+    profilePhotos: 100,
+    pinPosts: 15,
+    coinSpinMinutes: 25,
+    dailyCoins: 20000,
+    label: "VIP Gold",
+  },
+  diamond: {
+    chatPerDay: 99999,
+    chatPhotos: 99999,
+    chatVideos: 99999,
+    profilePhotos: 99999,
+    pinPosts: 99999,
+    coinSpinMinutes: 10,
+    dailyCoins: 100000,
+    label: "VIP Diamond",
+  },
+} as const;
+
+export type PackageLevel = keyof typeof PACKAGE_LIMITS;
+
+export function getPackageLimits(vipLevel: string | null | undefined, vipUntil: Date | string | null | undefined) {
+  const isActive = vipUntil ? new Date(vipUntil) > new Date() : false;
+  if (!isActive || !vipLevel) return PACKAGE_LIMITS.free;
+  const key = vipLevel.toLowerCase().replace(/\s/g, "_").replace("vip_", "") as PackageLevel;
+  return (PACKAGE_LIMITS as any)[key] ?? PACKAGE_LIMITS.free;
+}
+
 export const ADDON_PACKAGES = [
   {
     id: "addon_boost",

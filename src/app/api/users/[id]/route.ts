@@ -22,6 +22,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       voteMonthScore: true,
       voteTotalScore: true,
       vipLevel: true,
+      vipUntil: true,
+      showProfileFrame: true,
+      profileFrameId: true,
+      followPrice: true,
       isOnline: true,
       lastSeen: true,
       createdAt: true,
@@ -50,6 +54,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       age: body.age ? Number(body.age) : undefined,
       province: body.province ?? undefined,
       relationship: body.relationship ?? undefined,
+      followPrice: body.followPrice !== undefined
+        ? (body.followPrice === null || body.followPrice === 0 ? null : Math.max(1, Number(body.followPrice)))
+        : undefined,
+      lookingFor: body.lookingFor !== undefined ? (body.lookingFor || null) : undefined,
+      hashtags: body.hashtags !== undefined ? (body.hashtags || null) : undefined,
     },
     select: { id: true, username: true, nickname: true, avatar: true, bio: true, gender: true, age: true, province: true },
   });

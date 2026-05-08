@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const comment = await prisma.comment.create({
     data: { content, userId: session.user.id, postId: id },
-    include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } },
+    include: { user: { select: { id: true, username: true, nickname: true, avatar: true, profileFrameId: true, showProfileFrame: true } } },
   });
   return NextResponse.json(comment, { status: 201 });
 }

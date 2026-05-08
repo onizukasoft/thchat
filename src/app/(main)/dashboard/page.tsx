@@ -44,14 +44,7 @@ function StatCard({ icon, label, value, sub, color, href }: {
   return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
-const QUICK_LINKS = [
-  { icon: "🎰", label: "โชคดีวันนี้", href: "/games/spin", color: "bg-green-100" },
-  { icon: "🎣", label: "ตกปลา", href: "/games/fish", color: "bg-blue-100" },
-  { icon: "❓", label: "ถาม-ตอบ", href: "/games/quiz", color: "bg-orange-100" },
-  { icon: "🎯", label: "ทายใจ", href: "/games/guess", color: "bg-cyan-100" },
-  { icon: "🃏", label: "จับคู่", href: "/games/match", color: "bg-purple-100" },
-  { icon: "📚", label: "คำศัพท์", href: "/games/word", color: "bg-rose-100" },
-];
+const QUICK_LINKS = [{ icon: "🎴", label: "ป็อกเด้ง", href: "/games/pokdeng", color: "bg-emerald-100" }];
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -139,7 +132,7 @@ export default function DashboardPage() {
               </div>
               <Link href="/games" className="text-xs text-blue-500 hover:underline flex items-center gap-0.5">ทั้งหมด<ChevronRight className="w-3 h-3" /></Link>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {QUICK_LINKS.map((g) => (
                 <Link key={g.href} href={g.href}
                   className={`${g.color} rounded-xl p-3 flex flex-col items-center gap-1.5 hover:opacity-80 transition-opacity`}>

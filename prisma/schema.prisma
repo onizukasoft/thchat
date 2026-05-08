@@ -20,6 +20,8 @@ model User {
   latitude  Float?
   longitude Float?
   coins     Int      @default(0)
+  /** หัวใจจากโปรไฟล์ที่ใช้แลกของขวัญ/รางวัลไปแล้ว (หักจากยอด HeartVote ที่ได้รับ) */
+  profileHeartsSpent Int      @default(0)
   coverImage        String?
   relationship      String?  @default("single")
   starScore         Int      @default(0)
@@ -30,11 +32,16 @@ model User {
   showOnlineStatus  Boolean  @default(true)
   showProfileFrame  Boolean  @default(false)
   profileFrameId    String?
+  followPrice       Int?
+  lookingFor        String?  // comma-separated: "หาแฟน,โสด,..."
+  hashtags          String?  // comma-separated: "ดนตรี,ท่องเที่ยว,..."
   role              String   @default("user")
   isBanned          Boolean  @default(false)
-  isOnline          Boolean  @default(false)
-  lastSeen  DateTime @default(now())
-  createdAt DateTime @default(now())
+  isOnline            Boolean   @default(false)
+  lastSeen            DateTime  @default(now())
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  createdAt           DateTime  @default(now())
   updatedAt DateTime @updatedAt
 
   sentMessages     Message[]         @relation("SentMessages")
@@ -49,6 +56,11 @@ model User {
   sentGifts        Gift[]            @relation("GiftSender")
   receivedGifts    Gift[]            @relation("GiftReceiver")
   notifications    Notification[]
+  heartsGiven      HeartVote[]       @relation("HeartGiven")
+  heartsReceived   HeartVote[]       @relation("HeartReceived")
+  creatorProfile    CreatorProfile?
+  clipSubscriptions ClipSubscription[] @relation("ClipSubscriber")
+  clipPurchases     ClipPurchase[]     @relation("ClipPurchases")
 }
 
 model Message {
@@ -103,6 +115,8 @@ model Post {
   title     String
   content   String
   category  String   @default("general")
+  isPinned  Boolean  @default(false)
+  mediaUrls String?  // JSON array: [{url, type}]
   views     Int      @default(0)
   userId    String
   createdAt DateTime @default(now())
@@ -126,6 +140,7 @@ model Comment {
 model Follow {
   followerId  String
   followingId String
+  status      String   @default("pending") // "pending" | "accepted" | "rejected"
   createdAt   DateTime @default(now())
 
   follower  User @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
@@ -171,10 +186,104 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model HeartVote {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  amount     Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("HeartGiven",    fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("HeartReceived", fields: [toUserId],   references: [id], onDelete: Cascade)
+}
+
 model Announcement {
   id        String   @id @default(cuid())
   title     String
   content   String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+model CreatorProfile {
+  userId       String   @id
+  bio          String?
+  monthlyPrice Int      @default(99)  // coins per month
+  totalEarned  Int      @default(0)
+  withdrawable Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions ClipSubscription[]
+  clips         Clip[]
+  withdrawals   WithdrawalRequest[]
+}
+
+model Clip {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  videoUrl         String
+  thumbnailUrl     String?
+  isSubscriberOnly Boolean  @default(false)
+  lockedPrice      Int?     // PPV: ต้องซื้อเพิ่มรายคลิป (null = ไม่มี PPV)
+  views            Int      @default(0)
+  creatorId        String
+  createdAt        DateTime @default(now())
+
+  creator   CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+  purchases ClipPurchase[]
+}
+
+model ClipPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  clipId    String
+  price     Int
+  createdAt DateTime @default(now())
+
+  user User @relation("ClipPurchases", fields: [userId], references: [id], onDelete: Cascade)
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clipId])
+}
+
+model ClipSubscription {
+  id           String   @id @default(cuid())
+  subscriberId String
+  creatorId    String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  subscriber User           @relation("ClipSubscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creator    CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+
+  @@unique([subscriberId, creatorId])
+}
+
+model VipPackageSetting {
+  id        String  @id
+  name      String
+  icon      String
+  level     String
+  price     Int
+  coins     Int
+  days      Int
+  features  String
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model WithdrawalRequest {
+  id        String   @id @default(cuid())
+  creatorId String
+  amount    Int
+  note      String?
+  status    String   @default("pending") // "pending" | "approved" | "rejected"
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
 }

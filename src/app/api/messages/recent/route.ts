@@ -14,8 +14,8 @@ export async function GET() {
       ],
     },
     include: {
-      sender: { select: { id: true, username: true, nickname: true, avatar: true, isOnline: true } },
-      receiver: { select: { id: true, username: true, nickname: true, avatar: true, isOnline: true } },
+      sender: { select: { id: true, username: true, nickname: true, avatar: true, isOnline: true, profileFrameId: true, showProfileFrame: true } },
+      receiver: { select: { id: true, username: true, nickname: true, avatar: true, isOnline: true, profileFrameId: true, showProfileFrame: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,

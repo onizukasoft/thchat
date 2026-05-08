@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,7 @@ type RoomMsg = {
   content: string;
   userId: string;
   createdAt: string;
-  user: { id: string; username: string; nickname: string | null; avatar: string | null };
+  user: { id: string; username: string; nickname: string | null; avatar: string | null; profileFrameId?: string | null; showProfileFrame?: boolean };
 };
 
 type RoomInfo = { id: string; name: string; description: string | null };
@@ -99,12 +99,12 @@ export default function RoomPage() {
               <div key={msg.id} className={`flex items-end gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
                 {!isMine && (
                   <Link href={`/profile/${msg.user.id}`}>
-                    <Avatar className="w-7 h-7 shrink-0">
-                      <AvatarImage src={msg.user.avatar || ""} />
-                      <AvatarFallback className="text-xs bg-purple-100 text-purple-700">
-                        {(msg.user.nickname || msg.user.username)[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      src={msg.user.avatar}
+                      fallback={(msg.user.nickname || msg.user.username)[0]}
+                      className="w-8 h-8 shrink-0"
+                      frameId={msg.user.showProfileFrame ? msg.user.profileFrameId : null}
+                    />
                   </Link>
                 )}
                 <div className={`max-w-[70%] flex flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}>

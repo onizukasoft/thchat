@@ -1,15 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 <defs>
-  <mask id="m">
-    <rect width="200" height="200" fill="white" rx="10"/>
-    <rect x="14" y="14" width="172" height="172" fill="black"/>
-  </mask>
-  
+  <linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#e11d48"/><stop offset="40%" stop-color="#fb7185"/><stop offset="70%" stop-color="#c2410c"/><stop offset="100%" stop-color="#e11d48"/>
+  </linearGradient>
 </defs>
-<rect width="200" height="200" fill="#fff" mask="url(#m)" rx="10"/>
-<rect width="200" height="200" fill="#27ae60" mask="url(#m)"/>
-<circle cx="14" cy="14" r="14" fill="#fff" opacity="0.5"/>
-<circle cx="186" cy="14" r="14" fill="#fff" opacity="0.5"/>
-<circle cx="14" cy="186" r="14" fill="#fff" opacity="0.5"/>
-<circle cx="186" cy="186" r="14" fill="#fff" opacity="0.5"/>
+<rect x="2" y="2" width="196" height="196" rx="12" ry="12" fill="none" stroke="url(#g5)" stroke-width="4"/>
+<rect x="6.5" y="6.5" width="187.0" height="187.0" rx="10" ry="10" fill="none" stroke="#fda4af" stroke-width="1.5" stroke-dasharray="5,3"/>
+<rect x="11" y="11" width="178" height="178" rx="8" ry="8" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
+<polyline points="28,10 10,10 10,28" stroke="#fda4af" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="172,10 190,10 190,28" stroke="#fda4af" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="28,190 10,190 10,172" stroke="#fda4af" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="172,190 190,190 190,172" stroke="#fda4af" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
