@@ -27,6 +27,12 @@ export function GlobalCallHandler() {
   useEffect(() => {
     if (!session?.user?.id) return;
     const socket = getSocket();
+    socket.emit("user:online", session.user.id);
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const socket = getSocket();
 
     const onIncoming = (data: IncomingCallData) => {
       // VideoCall component on the chat page handles it directly

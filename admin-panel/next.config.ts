@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["admin.thchat.net"],
+  devIndicators: false,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "pub-1e036f7824024166a65ba60f99d3226f.r2.dev" },

@@ -95,6 +95,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const crumb = segments.length > 0 ? segments[segments.length - 1] : "dashboard";
 
   useEffect(() => {
+    fetch("/api/auth").then((r) => { if (!r.ok) router.replace("/login"); });
+  }, [router]);
+
+  useEffect(() => {
     const saved = window.localStorage.getItem("admin_lang");
     if (saved === "th" || saved === "en") setLang(saved);
   }, []);

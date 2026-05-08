@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
     take: 200,
   });
 
-  // Earned = sum of positive amounts from non-purchase types
-  const earned = transactions.filter((t) => t.amount > 0 && t.type !== "purchase").reduce((s, t) => s + t.amount, 0);
-  const purchased = transactions.filter((t) => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+  // Earned = sum of positive amounts from non-stripe-purchase types
+  const earned = transactions.filter((t) => t.amount > 0 && t.type !== "stripe_purchase").reduce((s, t) => s + t.amount, 0);
+  const purchased = transactions.filter((t) => t.type === "stripe_purchase").reduce((s, t) => s + t.amount, 0);
 
   // Group by day or month
   const groups: Record<string, typeof transactions> = {};
