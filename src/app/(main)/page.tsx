@@ -332,19 +332,23 @@ function ProfileModal({
     if (e.target === e.currentTarget) onClose();
   }
 
-  // Close on Escape
+  // Close on Escape + lock body scroll
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
       onClick={handleBackdrop}
     >
-      <div className="relative w-full h-full sm:h-auto sm:max-w-sm sm:rounded-2xl sm:overflow-hidden bg-white flex flex-col">
+      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white flex flex-col">
 
         {/* Header — overlays the photo on mobile */}
         <div className="absolute top-0 left-0 right-0 z-10 px-4 pt-4 pb-8 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
@@ -374,7 +378,7 @@ function ProfileModal({
         </div>
 
         {/* Photo */}
-        <div className="flex-1 bg-black relative min-h-[65vh] sm:min-h-[420px]">
+        <div className="h-72 sm:h-80 bg-black relative shrink-0">
           {user.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

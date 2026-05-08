@@ -9,7 +9,7 @@ import {
   Gift, CheckCircle2, Heart, Coins, Edit, MessageCircle,
   UserPlus, UserCheck, Loader2, MapPin, Users, FileText, Crown,
   MessageSquare, Eye, Play, Bell, Trophy, Headphones,
-  Gamepad2, ChevronRight, Film, Plus, Lock, Globe,
+  Gamepad2, ChevronRight, Film, Plus, Lock, Globe, Camera,
 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { getSocket } from "@/lib/socket-client";
@@ -152,6 +152,36 @@ export default function ProfilePage() {
   const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
   const scoreRef = useRef<HTMLParagraphElement>(null);
   const heartIdRef = useRef(0);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload/avatar", { method: "POST", body: fd });
+    const data = await res.json();
+    if (res.ok) setUser((prev) => prev ? { ...prev, avatar: data.url } : prev);
+    setUploadingAvatar(false);
+    e.target.value = "";
+  }
+
+  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCover(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload/cover", { method: "POST", body: fd });
+    const data = await res.json();
+    if (res.ok) setUser((prev) => prev ? { ...prev, coverImage: data.url } : prev);
+    setUploadingCover(false);
+    e.target.value = "";
+  }
 
   const fetchUser = useCallback(async () => {
     const [userRes, postsRes] = await Promise.all([
@@ -198,11 +228,11 @@ export default function ProfilePage() {
       body: JSON.stringify({ targetId: userId }),
     });
     const data = await res.json();
-    if (res.status === 402) {
-      alert(`เหรียญไม่พอ! ต้องการ ${data.required} เหรียญ (มีอยู่ ${data.current} เหรียญ)`);
-    } else {
-      setFollowed(data.status === "pending" || data.status === "accepted");
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+      return;
     }
+    setFollowed(data.status === "pending" || data.status === "accepted");
     setFollowLoading(false);
   }
 
@@ -287,11 +317,24 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto min-h-screen bg-gray-50 dark:bg-gray-950">
 
       {/* ─── Cover ─── */}
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+
       <div className="relative h-44 overflow-hidden">
         {user.coverImage ? (
           <img src={user.coverImage} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gray-200 dark:bg-gray-800" />
+        )}
+        {isOwn && (
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploadingCover}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/50 hover:bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
+          >
+            {uploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+            เปลี่ยนรูปปก
+          </button>
         )}
       </div>
 
@@ -306,6 +349,18 @@ export default function ProfilePage() {
               className="w-24 h-24"
               frameId={canUseVipFrame ? user.profileFrameId : null}
             />
+            {isOwn && (
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl opacity-0 hover:opacity-100 transition-opacity"
+              >
+                {uploadingAvatar
+                  ? <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  : <Camera className="w-6 h-6 text-white" />
+                }
+              </button>
+            )}
           </div>
         </div>
 
@@ -402,7 +457,7 @@ export default function ProfilePage() {
                 : followed
                   ? <><UserCheck className="w-4 h-4" /> ส่งแล้ว</>
                   : user.followPrice && user.followPrice > 0
-                    ? <><Coins className="w-4 h-4" /> {user.followPrice} เหรียญ</>
+                    ? <>฿{(user.followPrice / 100).toFixed(0)} เพิ่มเพื่อน</>
                     : <><UserPlus className="w-4 h-4" /> เพิ่มเพื่อน</>
               }
             </button>

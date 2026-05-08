@@ -49,15 +49,8 @@ export function TopNavbar() {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Logo: hidden on mobile */}
-      <Link href="/" className="hidden sm:flex shrink-0 items-center px-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="ThChat" className="h-8 w-auto object-contain" />
-      </Link>
-      <div className="hidden sm:block w-px h-6 bg-white/20 shrink-0" />
-
       {/* Tabs */}
-      <div className="flex-1 flex items-center h-full sm:overflow-x-auto sm:scrollbar-hide sm:gap-1 sm:px-2">
+      <div className="flex-1 flex items-center h-full sm:overflow-x-auto sm:scrollbar-hide sm:gap-1 sm:px-0">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = pathname === tab.href;

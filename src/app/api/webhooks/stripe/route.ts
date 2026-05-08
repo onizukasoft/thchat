@@ -21,10 +21,50 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const { userId, coins, type, vipLevel, vipDays, packageId, packageLabel } = session.metadata ?? {};
+    const { userId, type } = session.metadata ?? {};
 
-    if (!userId || !coins) {
-      console.error("Missing metadata in session", session.id);
+    if (!userId) {
+      console.error("Missing userId in session", session.id);
+      return NextResponse.json({ error: "Missing metadata" }, { status: 400 });
+    }
+
+    if (type === "follow_request") {
+      const { targetId, amount } = session.metadata ?? {};
+      if (!targetId || !amount) {
+        console.error("Missing follow_request metadata", session.id);
+        return NextResponse.json({ error: "Missing metadata" }, { status: 400 });
+      }
+
+      const existingFollow = await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: userId, followingId: targetId } },
+      });
+      if (existingFollow) return NextResponse.json({ ok: true, skipped: true });
+
+      const satang = parseInt(amount, 10);
+      const earns = Math.round(satang * 0.8);
+
+      await prisma.$transaction([
+        prisma.follow.create({ data: { followerId: userId, followingId: targetId, status: "pending" } }),
+        prisma.user.update({ where: { id: targetId }, data: { followEarned: { increment: earns } } }),
+        prisma.notification.create({
+          data: {
+            userId: targetId,
+            type: "follow",
+            title: "คำขอเพิ่มเพื่อน",
+            body: `มีคนส่งคำขอเพิ่มเพื่อนพร้อมชำระ ฿${(satang / 100).toFixed(0)}`,
+            link: `/profile/${userId}`,
+          },
+        }),
+      ]);
+
+      console.log(`✅ Follow request: ${userId} → ${targetId}, creator earned ${earns} satang`);
+      return NextResponse.json({ received: true });
+    }
+
+    // Coin / VIP purchase
+    const { coins, vipLevel, vipDays, packageId, packageLabel } = session.metadata ?? {};
+    if (!coins) {
+      console.error("Missing coins in session", session.id);
       return NextResponse.json({ error: "Missing metadata" }, { status: 400 });
     }
 

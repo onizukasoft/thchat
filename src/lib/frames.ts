@@ -37,5 +37,11 @@ export function canUseFrame(frame: Frame, vipLevel: string | null): boolean {
 
 export function getFrame(id: string | null | undefined): Frame | null {
   if (!id) return null;
-  return FRAMES.find((f) => f.id === id) ?? null;
+  const found = FRAMES.find((f) => f.id === id);
+  if (found) return found;
+  // รองรับ fXX ทุก ID ที่ packages page ใช้ (เช่น f21–f30)
+  if (/^f\d+$/.test(id)) {
+    return { id, name: id, image: `/frames/${id}.svg`, minVip: "bronze" };
+  }
+  return null;
 }

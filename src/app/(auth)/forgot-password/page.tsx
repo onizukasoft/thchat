@@ -25,68 +25,75 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-950 via-purple-900 to-pink-900 p-4">
-      {/* Background orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 py-8">
+      <div className="w-full max-w-sm flex flex-col">
 
-      <div className="relative w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
-          <Link href="/login" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm mb-6 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            กลับไปเข้าสู่ระบบ
-          </Link>
+        {/* Logo */}
+        <div className="text-center mb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="ThChat" className="w-50 h-50 object-contain mx-auto mb-0" />
+          <p className="text-gray-500 text-sm mt-1">หาเพื่อน พูดคุย สนุกสนาน</p>
+        </div>
 
-          {!sent ? (
-            <>
-              <div className="mb-6">
-                <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4">
-                  <Mail className="w-7 h-7 text-purple-300" />
-                </div>
-                <h1 className="text-2xl font-bold text-white mb-1">ลืมรหัสผ่าน?</h1>
-                <p className="text-white/60 text-sm">กรอกอีเมลของคุณ เราจะส่งลิงก์รีเซ็ตรหัสผ่านให้</p>
-              </div>
+        {!sent ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <Link href="/login" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-sm mb-6 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              กลับ
+            </Link>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">ลืมรหัสผ่าน</h2>
+            <p className="text-sm text-gray-400 mb-6">กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์รีเซ็ตให้</p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">อีเมล</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="อีเมลของคุณ"
+                    placeholder="your@email.com"
                     required
-                    className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
                   />
                 </div>
-                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังส่ง...</> : "ส่งลิงก์รีเซ็ต"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-8 h-8 text-green-400" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">ส่งอีเมลแล้ว!</h2>
-              <p className="text-white/60 text-sm mb-6">
-                ตรวจสอบอีเมล <span className="text-white font-medium">{email}</span><br />
-                ลิงก์จะหมดอายุใน 1 ชั่วโมง
-              </p>
-              <Link href="/login" className="text-purple-300 hover:text-white text-sm transition-colors">
-                กลับไปเข้าสู่ระบบ
-              </Link>
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 mt-1"
+              >
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังส่ง...</> : "ส่งลิงก์รีเซ็ต"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-6 h-6 text-green-500" />
             </div>
-          )}
-        </div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">ส่งอีเมลแล้ว!</h2>
+            <p className="text-sm text-gray-500 mb-1">ตรวจสอบกล่องข้อความของ</p>
+            <p className="text-sm font-medium text-gray-800 mb-1">{email}</p>
+            <p className="text-xs text-gray-400 mb-6">ลิงก์หมดอายุใน 1 ชั่วโมง</p>
+            <Link href="/login" className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors">
+              กลับไปเข้าสู่ระบบ
+            </Link>
+          </div>
+        )}
+
+        <p className="text-center text-sm text-gray-500 mt-5">
+          จำรหัสผ่านได้แล้ว?{" "}
+          <Link href="/login" className="text-purple-600 hover:text-purple-700 font-medium">
+            เข้าสู่ระบบ
+          </Link>
+        </p>
+
       </div>
     </div>
   );

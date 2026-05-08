@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { stripe } from "@/lib/stripe";
 
 // GET — รายชื่อเพื่อนที่ accepted แล้ว + คำขอที่รอ
 export async function GET() {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     prisma.follow.findUnique({
       where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
     }),
-    prisma.user.findUnique({ where: { id: targetId }, select: { followPrice: true } }),
+    prisma.user.findUnique({ where: { id: targetId }, select: { followPrice: true, nickname: true, username: true } }),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { nickname: true, username: true, coins: true } }),
   ]);
 
@@ -61,36 +62,36 @@ export async function POST(req: NextRequest) {
   }
 
   const price = targetUser?.followPrice ?? 0;
-  const name = me?.nickname || me?.username || "มีคนใหม่";
+  const myName = me?.nickname || me?.username || "มีคนใหม่";
 
-  // ตรวจสอบเหรียญถ้าเป็นแบบเสียตัง
+  // ชำระเงินจริงผ่าน Stripe ถ้ามีราคา
   if (price > 0) {
-    if ((me?.coins ?? 0) < price) {
-      return NextResponse.json({ error: "เหรียญไม่พอ", required: price, current: me?.coins ?? 0 }, { status: 402 });
-    }
-    // หักเหรียญ + สร้างคำขอ + แจ้งเตือน
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: session.user.id }, data: { coins: { decrement: price } } }),
-      prisma.coinTransaction.create({
-        data: {
-          userId: session.user.id,
-          amount: -price,
-          type: "spend",
-          description: `ส่งคำขอเพิ่มเพื่อน (${name})`,
+    const targetName = targetUser?.nickname || targetUser?.username || "ผู้ใช้";
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3001";
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [{
+        price_data: {
+          currency: "thb",
+          unit_amount: price,
+          product_data: {
+            name: `ส่งคำขอเพิ่มเพื่อน ${targetName}`,
+            description: `จาก ${myName} — ThChat`,
+          },
         },
-      }),
-      prisma.follow.create({ data: { followerId: session.user.id, followingId: targetId, status: "pending" } }),
-      prisma.notification.create({
-        data: {
-          userId: targetId,
-          type: "follow",
-          title: name,
-          body: `ส่งคำขอเพิ่มเพื่อน (จ่าย ${price} เหรียญ)`,
-          link: `/profile/${session.user.id}`,
-        },
-      }),
-    ]);
-    return NextResponse.json({ status: "pending", paidCoins: price });
+        quantity: 1,
+      }],
+      metadata: {
+        type: "follow_request",
+        userId: session.user.id,
+        targetId,
+        amount: String(price),
+      },
+      success_url: `${baseUrl}/profile/${targetId}?follow=success`,
+      cancel_url: `${baseUrl}/profile/${targetId}`,
+    });
+    return NextResponse.json({ checkoutUrl: checkoutSession.url });
   }
 
   // ฟรี
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: targetId,
         type: "follow",
-        title: name,
+        title: myName,
         body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
         link: `/profile/${session.user.id}`,
       },

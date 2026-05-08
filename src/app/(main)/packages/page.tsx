@@ -45,11 +45,18 @@ export default function PackagesPage() {
     setSettings((prev) => (prev ? { ...prev, ...updates } : prev));
     setSaving(true);
     try {
-      await fetch("/api/vip/settings", {
+      const res = await fetch("/api/vip/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (res.ok) {
+        const saved = await res.json();
+        setSettings((prev) => (prev ? { ...prev, ...saved } : prev));
+      } else {
+        // rollback
+        fetch("/api/vip/settings").then((r) => r.json()).then(setSettings);
+      }
     } finally {
       setSaving(false);
     }

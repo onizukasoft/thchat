@@ -32,7 +32,8 @@ model User {
   showOnlineStatus  Boolean  @default(true)
   showProfileFrame  Boolean  @default(false)
   profileFrameId    String?
-  followPrice       Int?
+  followPrice       Int?     // satang (THB*100) e.g. 9900 = 99฿
+  followEarned      Int      @default(0)
   lookingFor        String?  // comma-separated: "หาแฟน,โสด,..."
   hashtags          String?  // comma-separated: "ดนตรี,ท่องเที่ยว,..."
   role              String   @default("user")
