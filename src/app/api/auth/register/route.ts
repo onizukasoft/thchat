@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   username: z.string().min(3, "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร").max(20, "ชื่อผู้ใช้ยาวเกิน 20 ตัวอักษร"),
@@ -13,6 +14,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`register:${getClientIp(req)}`, 10, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "ลองใหม่ใน 1 ชั่วโมง" }, { status: 429 });
+  }
   try {
     const body = await req.json();
     const data = schema.parse(body);

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/mailer";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`forgot:${getClientIp(req)}`, 5, 15 * 60 * 1000)) {
+    return NextResponse.json({ error: "ลองใหม่ใน 15 นาที" }, { status: 429 });
+  }
+
   const { email } = await req.json();
 
   if (!email) return NextResponse.json({ error: "กรุณากรอกอีเมล" }, { status: 400 });

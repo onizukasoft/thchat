@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
   const { title, content, category, mediaUrls } = await req.json();
+  if (!content?.trim()) return NextResponse.json({ error: "เนื้อหาว่างเปล่า" }, { status: 400 });
+  if (title && title.length > 200) return NextResponse.json({ error: "หัวข้อยาวเกิน 200 ตัวอักษร" }, { status: 400 });
+  if (content.length > 5000) return NextResponse.json({ error: "เนื้อหายาวเกิน 5,000 ตัวอักษร" }, { status: 400 });
   const post = await prisma.post.create({
     data: {
       title,
