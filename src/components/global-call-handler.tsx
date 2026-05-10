@@ -27,7 +27,11 @@ export function GlobalCallHandler() {
   useEffect(() => {
     if (!session?.user?.id) return;
     const socket = getSocket();
-    socket.emit("user:online", session.user.id);
+    const userId = session.user.id;
+    const register = () => socket.emit("user:online", userId);
+    register();
+    socket.on("connect", register);
+    return () => { socket.off("connect", register); };
   }, [session?.user?.id]);
 
   useEffect(() => {

@@ -1,26 +1,72 @@
 {
-  "name": "ThChat - แชทหาเพื่อน",
+  "name": "ThChat - แชทออนไลน์ หาเพื่อนคุย หาแฟน ฟรี!",
   "short_name": "ThChat",
-  "description": "แชทหาเพื่อนใหม่ ใกล้บ้านคุณ",
+  "description": "แชทออนไลน์ภาษาไทย หาเพื่อนคุย หาแฟน ฟรี! พูดคุยแบบเรียลไทม์ 24 ชั่วโมง",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["social", "entertainment", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "ThChat - แชทออนไลน์"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["social", "entertainment"],
-  "lang": "th"
+  "shortcuts": [
+    {
+      "name": "แชทออนไลน์",
+      "short_name": "แชท",
+      "description": "เริ่มแชทกับเพื่อนๆ",
+      "url": "/chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "หาเพื่อนใหม่",
+      "short_name": "หาเพื่อน",
+      "description": "ดูคนออนไลน์อยู่ใกล้คุณ",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "กระดาน",
+      "short_name": "กระดาน",
+      "description": "อ่านและโพสต์บนกระดาน",
+      "url": "/board",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

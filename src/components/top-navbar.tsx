@@ -29,7 +29,7 @@ export function TopNavbar() {
   }, []);
 
   const tabs = [
-    { href: "/board", label: "กระดาน", icon: LayoutGrid },
+    { href: "/board", label: "โพสต์", icon: LayoutGrid },
     { href: "/", label: "ออนไลน์", icon: Users, badge: onlineCount !== null ? formatCount(onlineCount) : null },
     { href: "/notifications", label: "แจ้งเตือน", icon: Bell },
     { href: "/clips", label: "คลิป", icon: Film },

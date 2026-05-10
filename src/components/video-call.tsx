@@ -283,12 +283,23 @@ export function VideoCall({ myId, myName, myAvatar, otherUser }: VideoCallProps)
       setCallState("idle");
     };
 
+    const onBlocked = ({ reason }: { reason: string }) => {
+      cleanup();
+      setCallState("idle");
+      if (reason === "calls_disabled") {
+        alert("ผู้ใช้นี้ปิดการรับสายไว้");
+      } else {
+        alert("ไม่สามารถโทรได้ — ต้องเป็นเพื่อนกันก่อน");
+      }
+    };
+
     socket.on("call:incoming", onIncoming);
     socket.on("call:accepted", onAccepted);
     socket.on("call:rejected", onRejected);
     socket.on("call:signal", onSignal);
     socket.on("call:ended", onEnded);
     socket.on("call:unavailable", onUnavailable);
+    socket.on("call:blocked", onBlocked);
 
     return () => {
       socket.off("call:incoming", onIncoming);
@@ -297,6 +308,7 @@ export function VideoCall({ myId, myName, myAvatar, otherUser }: VideoCallProps)
       socket.off("call:signal", onSignal);
       socket.off("call:ended", onEnded);
       socket.off("call:unavailable", onUnavailable);
+      socket.off("call:blocked", onBlocked);
     };
   }, [myId, otherUser.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

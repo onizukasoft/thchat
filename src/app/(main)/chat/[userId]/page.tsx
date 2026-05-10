@@ -4,11 +4,12 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { UserAvatar } from "@/components/user-avatar";
 import { getSocket } from "@/lib/socket-client";
+import { playMessageSound } from "@/lib/sounds";
 import {
   ArrowLeft, Send, ImageIcon, X, Loader2, Crown, Languages,
   Heart, ThumbsUp, ThumbsDown, Smile, Frown, Flame, Star,
   PartyPopper, Zap, Trophy, Gift, Sparkles, Music2, Rocket,
-  Coffee, SmilePlus, Check, CheckCheck, PhoneOff,
+  Coffee, SmilePlus, Check, CheckCheck, PhoneOff, User,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
@@ -59,8 +60,53 @@ function ReactionIcon({ name, size = "md" }: { name: string; size?: "sm" | "md" 
   );
 }
 
+// ─── User Popup ───────────────────────────────────────────────────────────────
+function UserPopup({ user, onClose, onChat }: {
+  user: User;
+  onClose: () => void;
+  onChat: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-[200]" onClick={onClose} />
+      <div className="fixed z-[201] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="h-16 bg-gradient-to-br from-purple-500 to-indigo-600" />
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/20 flex items-center justify-center text-white"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+        <div className="flex flex-col items-center -mt-8 pb-5 px-5">
+          <UserAvatar
+            src={user.avatar}
+            fallback={(user.nickname || user.username)[0]?.toUpperCase()}
+            className="w-16 h-16 border-4 border-white dark:border-gray-900 shadow-md"
+            frameId={user.showProfileFrame ? user.profileFrameId : null}
+          />
+          <p className="mt-2 font-bold text-gray-900 dark:text-white text-base">
+            {user.nickname || user.username}
+          </p>
+          {user.nickname && (
+            <p className="text-xs text-gray-400">@{user.username}</p>
+          )}
+          <div className="flex gap-2 mt-4 w-full">
+            <button
+              onClick={onChat}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors"
+            >
+              <User className="w-3.5 h-3.5" />
+              โปรไฟล์
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Message Bubble ───────────────────────────────────────────────────────────
-function MessageBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
+function MessageBubble({ msg, isMine, onAvatarClick }: { msg: Message; isMine: boolean; onAvatarClick?: () => void }) {
   const [translated, setTranslated] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
 
@@ -115,12 +161,14 @@ function MessageBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
   return (
     <div className={`flex items-end gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
       {!isMine && (
-        <UserAvatar
-          src={msg.sender.avatar}
-          fallback={(msg.sender.nickname || msg.sender.username)[0]}
-          className="w-7 h-7 shrink-0 mb-0.5"
-          frameId={msg.sender.showProfileFrame ? msg.sender.profileFrameId : null}
-        />
+        <button onClick={onAvatarClick} className="shrink-0 mb-0.5 rounded-full active:scale-90 transition-transform">
+          <UserAvatar
+            src={msg.sender.avatar}
+            fallback={(msg.sender.nickname || msg.sender.username)[0]}
+            className="w-7 h-7"
+            frameId={msg.sender.showProfileFrame ? msg.sender.profileFrameId : null}
+          />
+        </button>
       )}
 
       <div className={`max-w-[72%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
@@ -192,20 +240,24 @@ export default function ChatPage() {
   const [imagePreview, setImagePreview] = useState<{ url: string; file: File } | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const [chatLimit, setChatLimit] = useState<{ message: string; limit: number; upgrade: boolean } | null>(null);
+  const [isFriend, setIsFriend] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
-    const [msgRes, userRes] = await Promise.all([
+    const [msgRes, userRes, friendRes] = await Promise.all([
       fetch(`/api/messages/${userId}`),
       fetch(`/api/users/${userId}`),
+      fetch(`/api/favorites/check?targetId=${userId}`),
     ]);
-    const [msgs, user] = await Promise.all([msgRes.json(), userRes.json()]);
+    const [msgs, user, friendData] = await Promise.all([msgRes.json(), userRes.json(), friendRes.json()]);
     if (Array.isArray(msgs)) setMessages(msgs);
     setOtherUser(user);
     setIsOnline(user.isOnline ?? false);
+    setIsFriend(friendData.status === "accepted");
   }, [userId]);
 
   useEffect(() => {
@@ -219,7 +271,10 @@ export default function ChatPage() {
     const onReceive = (msg: Message) => {
       if (msg.senderId === userId || msg.senderId === session.user?.id) {
         setMessages((prev) => [...prev, msg]);
-        if (msg.senderId === userId) setOtherTyping(false);
+        if (msg.senderId === userId) {
+          setOtherTyping(false);
+          playMessageSound();
+        }
       }
     };
     const onSent = (msg: Message) => { setMessages((prev) => [...prev, msg]); setSending(false); };
@@ -329,6 +384,14 @@ export default function ChatPage() {
   const displayName = otherUser?.nickname || otherUser?.username || "";
 
   return (
+    <>
+    {showPopup && otherUser && (
+      <UserPopup
+        user={otherUser}
+        onClose={() => setShowPopup(false)}
+        onChat={() => { setShowPopup(false); router.push(`/profile/${otherUser.id}`); }}
+      />
+    )}
     <div ref={containerRef} className="flex flex-col h-[calc(100dvh-3.25rem)] bg-gray-50 dark:bg-gray-950 overflow-hidden -mt-2 -mx-2 -mb-28 md:rounded-xl md:border md:border-gray-200 dark:md:border-gray-700 md:-mt-4 md:-mx-4 md:-mb-4">
 
       {/* ─── Header ─── */}
@@ -373,12 +436,14 @@ export default function ChatPage() {
               </div>
             </Link>
 
-            <VideoCall
-              myId={session.user.id}
-              myName={session.user.name ?? ""}
-              myAvatar={session.user.image ?? null}
-              otherUser={otherUser}
-            />
+            {isFriend && (
+              <VideoCall
+                myId={session.user.id}
+                myName={session.user.name ?? ""}
+                myAvatar={session.user.image ?? null}
+                otherUser={otherUser}
+              />
+            )}
           </>
         )}
       </div>
@@ -395,7 +460,12 @@ export default function ChatPage() {
             </div>
           )}
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} msg={msg} isMine={msg.senderId === session.user?.id} />
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              isMine={msg.senderId === session.user?.id}
+              onAvatarClick={msg.senderId !== session.user?.id ? () => setShowPopup(true) : undefined}
+            />
           ))}
           <div ref={bottomRef} />
         </div>
@@ -514,5 +584,6 @@ export default function ChatPage() {
       </div>
 
     </div>
+    </>
   );
 }

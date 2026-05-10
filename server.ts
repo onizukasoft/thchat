@@ -5,6 +5,7 @@ import next from "next";
 import { Server, type Socket } from "socket.io";
 import { prisma } from "./src/lib/prisma";
 import { getPackageLimits } from "./src/lib/packages";
+import { notificationBus } from "./src/lib/notification-event";
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -161,6 +162,12 @@ app.prepare().then(async () => {
     });
     return res;
   }
+
+  // Forward notification events to the target user's socket
+  notificationBus.on("new", ({ userId }: { userId: string }) => {
+    const entry = Array.from(onlineUsers.entries()).find(([, v]) => v.userId === userId);
+    if (entry) io.to(entry[0]).emit("notification:new");
+  });
 
   io.on("connection", (socket) => {
     socket.emit("users:online", Array.from(onlineUsers.values()).map((u) => u.userId));
@@ -568,7 +575,24 @@ app.prepare().then(async () => {
     });
 
     // ─── Video Call Signaling ────────────────────────────────────────────────
-    socket.on("call:request", (data: { callerId: string; calleeId: string; callerName: string; callerAvatar: string | null }) => {
+    socket.on("call:request", async (data: { callerId: string; calleeId: string; callerName: string; callerAvatar: string | null; callType?: string }) => {
+      const [friendship, callee] = await Promise.all([
+        prisma.follow.findFirst({
+          where: { followerId: data.callerId, followingId: data.calleeId, status: "accepted" },
+        }),
+        prisma.user.findUnique({
+          where: { id: data.calleeId },
+          select: { allowCalls: true },
+        }),
+      ]);
+      if (!friendship) {
+        socket.emit("call:blocked", { reason: "not_friends" });
+        return;
+      }
+      if (!callee?.allowCalls) {
+        socket.emit("call:blocked", { reason: "calls_disabled" });
+        return;
+      }
       const calleeSocket = [...onlineUsers.entries()].find(([, v]) => v.userId === data.calleeId);
       if (calleeSocket) io.to(calleeSocket[0]).emit("call:incoming", data);
       else socket.emit("call:unavailable");

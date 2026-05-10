@@ -64,6 +64,7 @@ export const PACKAGE_LIMITS = {
     pinPosts: 0,
     coinSpinMinutes: 0,
     dailyCoins: 0,
+    maxPendingFriendRequests: 10,
     label: "ฟรี",
   },
   vip_basic: {
@@ -74,6 +75,7 @@ export const PACKAGE_LIMITS = {
     pinPosts: 5,
     coinSpinMinutes: 55,
     dailyCoins: 5000,
+    maxPendingFriendRequests: 30,
     label: "VIP BASIC",
   },
   silver: {
@@ -84,6 +86,7 @@ export const PACKAGE_LIMITS = {
     pinPosts: 10,
     coinSpinMinutes: 40,
     dailyCoins: 10000,
+    maxPendingFriendRequests: 50,
     label: "VIP Silver",
   },
   gold: {
@@ -94,6 +97,7 @@ export const PACKAGE_LIMITS = {
     pinPosts: 15,
     coinSpinMinutes: 25,
     dailyCoins: 20000,
+    maxPendingFriendRequests: 100,
     label: "VIP Gold",
   },
   diamond: {
@@ -104,6 +108,7 @@ export const PACKAGE_LIMITS = {
     pinPosts: 99999,
     coinSpinMinutes: 10,
     dailyCoins: 100000,
+    maxPendingFriendRequests: 9999,
     label: "VIP Diamond",
   },
 } as const;

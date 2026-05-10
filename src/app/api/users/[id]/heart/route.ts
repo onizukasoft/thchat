@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/create-notification";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -39,14 +40,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { voteMonthScore: { increment: hearts }, voteTotalScore: { increment: hearts }, starScore: { increment: hearts } },
       select: { voteMonthScore: true, voteTotalScore: true, starScore: true },
     }),
-    prisma.notification.create({
-      data: {
-        userId,
-        type: "follow",
-        title: "ได้รับหัวใจ!",
-        body: `มีคนให้หัวใจคุณ ${hearts} ดวง`,
-        link: `/profile/${session.user.id}`,
-      },
+    createNotification({
+      userId,
+      type: "heart",
+      title: "ได้รับหัวใจ!",
+      body: `มีคนให้หัวใจคุณ ${hearts} ดวง`,
+      link: `/profile/${session.user.id}`,
     }),
   ]);
 

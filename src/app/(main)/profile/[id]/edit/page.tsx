@@ -2,11 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Loader2, ImagePlus, Check, Video } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, Video, ChevronDown } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import Link from "next/link";
 import { PROVINCES } from "@/lib/provinces";
-import { FRAMES, canUseFrame } from "@/lib/frames";
 
 export default function EditProfilePage() {
   const { data: session, status } = useSession();
@@ -27,10 +26,6 @@ export default function EditProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [message, setMessage] = useState("");
   const [msgOk, setMsgOk] = useState(true);
-  const [vipLevel, setVipLevel] = useState<string | null>(null);
-  const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
-  const [showFrame, setShowFrame] = useState(false);
-  const [savingFrame, setSavingFrame] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -47,17 +42,12 @@ export default function EditProfilePage() {
         province: u.province || "",
         relationship: u.relationship || "single",
       });
-      setVipLevel(u.vipLevel ?? null);
       if (u.followPrice && u.followPrice > 0) {
         setFollowMode("paid");
         setFollowPrice(String(Math.round(u.followPrice / 100)));
       } else {
         setFollowMode("free");
       }
-    });
-    fetch(`/api/users/${userId}/frame`).then((r) => r.json()).then((d) => {
-      setSelectedFrame(d.frameId ?? null);
-      setShowFrame(d.showProfileFrame ?? false);
     });
   }, [session, status, userId, router]);
 
@@ -70,7 +60,7 @@ export default function EditProfilePage() {
     setLoading(false);
     if (res.ok) {
       setForm((prev) => ({ ...prev, [field]: data.url }));
-      toast("อัปโหลดรูปสำเร็จ!", true);
+      toast("อัปโหลดสำเร็จ!", true);
     } else {
       toast(data.error || "อัปโหลดไม่สำเร็จ", false);
     }
@@ -114,301 +104,241 @@ export default function EditProfilePage() {
     setSaving(false);
   }
 
-  async function saveFrame(frameId: string | null, show: boolean) {
-    setSavingFrame(true);
-    await fetch(`/api/users/${userId}/frame`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frameId, showProfileFrame: show }),
-    });
-    setSavingFrame(false);
-    toast("บันทึกกรอบรูปสำเร็จ!", true);
-  }
-
-  const displayName = form.nickname || session?.user?.name || "?";
+const displayName = form.nickname || session?.user?.name || "?";
   const paidThb = Number(followPrice) || 0;
   const earns = Math.floor(paidThb * 0.8);
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <div className="min-h-screen bg-gray-50">
       <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onCoverChange} />
       <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="hidden" onChange={onAvatarChange} />
 
+      {/* Toast */}
+      {message && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-xl transition-all ${msgOk ? "bg-gray-900 text-white" : "bg-red-500 text-white"}`}>
+          {message}
+        </div>
+      )}
+
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur border-b border-gray-100">
-        <Link href={`/profile/${userId}`} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          กลับ
+      <div className="sticky top-0 z-20 flex items-center justify-between px-4 h-14 bg-white border-b border-gray-100">
+        <Link href={`/profile/${userId}`} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+          <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="text-sm font-semibold text-gray-900">แก้ไขโปรไฟล์</h1>
+        <span className="text-[15px] font-semibold text-gray-900">แก้ไขโปรไฟล์</span>
         <button
           form="edit-form"
           type="submit"
           disabled={saving || uploadingAvatar || uploadingCover}
-          className="px-4 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-semibold rounded-full transition-colors flex items-center gap-1.5"
+          className="h-8 px-4 bg-gray-900 hover:bg-gray-700 disabled:opacity-40 text-white text-[13px] font-semibold rounded-full transition-colors flex items-center gap-1.5"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
           บันทึก
         </button>
       </div>
 
-      {/* Toast */}
-      {message && (
-        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg ${msgOk ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
-          {message}
-        </div>
-      )}
+      <form id="edit-form" onSubmit={handleSubmit} className="max-w-lg mx-auto pb-24">
 
-      <form id="edit-form" onSubmit={handleSubmit} className="max-w-lg mx-auto pb-20">
-
-        {/* ─── Photos ─── */}
-        <div className="mx-4 mt-4 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        {/* ─── Hero photo section ─── */}
+        <div className="relative mb-16">
+          {/* Cover */}
           <div
             onClick={() => coverInputRef.current?.click()}
-            className="relative h-32 bg-gray-100 cursor-pointer group"
+            className="relative h-44 cursor-pointer group overflow-hidden"
           >
-            {form.coverImage
-              ? <img src={form.coverImage} alt="" className="w-full h-full object-cover" />
-              : (
-                <div className="w-full h-full bg-gradient-to-br from-violet-100 to-purple-100 flex flex-col items-center justify-center gap-1">
-                  <ImagePlus className="w-6 h-6 text-violet-300" />
-                  <span className="text-xs text-violet-300">เพิ่มรูปปก</span>
-                </div>
-              )
-            }
-            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              {uploadingCover ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+            {form.coverImage ? (
+              <img src={form.coverImage} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-slate-200 via-gray-200 to-zinc-300" />
+            )}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-4 py-2 rounded-full">
+                {uploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                เปลี่ยนรูปปก
+              </div>
             </div>
           </div>
 
-          <div className="flex items-end gap-4 px-4 -mt-8 pb-4">
+          {/* Avatar — floating over cover */}
+          <div className="absolute -bottom-12 left-5">
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="relative w-20 h-20 rounded-2xl border-4 border-white shadow-md shrink-0 group"
+              className="relative w-24 h-24 rounded-2xl border-4 border-white shadow-lg group"
             >
-              <UserAvatar src={form.avatar} fallback={displayName[0]} className="w-full h-full" />
-              <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                {uploadingAvatar ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+              <UserAvatar src={form.avatar} fallback={displayName[0]} className="w-full h-full rounded-xl" />
+              <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingAvatar
+                    ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    : <Camera className="w-5 h-5 text-white" />}
+                </div>
               </div>
             </button>
-            <div className="pb-1">
-              <p className="text-xs font-semibold text-gray-700">{displayName}</p>
-              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
-                <span className="flex items-center gap-0.5"><Camera className="w-3 h-3" /> รูป JPG/PNG</span>
-                <span>·</span>
-                <span className="flex items-center gap-0.5"><Video className="w-3 h-3" /> วิดีโอ MP4</span>
-              </div>
-            </div>
+          </div>
+
+          {/* Hint beside avatar */}
+          <div className="absolute -bottom-10 left-36 flex flex-col gap-0.5">
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <Camera className="w-3 h-3" /> รูปโปรไฟล์ JPG/PNG/GIF
+            </span>
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <Video className="w-3 h-3" /> วิดีโอ MP4 ได้เลย
+            </span>
           </div>
         </div>
 
-        {/* ─── VIP Frame picker ─── */}
-        {vipLevel && (
-          <div className="mx-4 mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 pt-4 pb-3 border-b border-gray-50 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">กรอบโปรไฟล์ VIP</p>
-                <p className="text-xs text-gray-400 mt-0.5">เลือกกรอบที่ต้องการแสดง</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { const next = !showFrame; setShowFrame(next); saveFrame(selectedFrame, next); }}
-                className="flex items-center gap-2 text-xs text-gray-600"
-              >
-                <div className="relative w-9 h-5 rounded-full transition-colors duration-200" style={{ backgroundColor: showFrame ? "#7c3aed" : "#d1d5db" }}>
-                  <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200" style={{ transform: showFrame ? "translateX(16px)" : "translateX(0)" }} />
-                </div>
-                แสดงกรอบ
-              </button>
-            </div>
-            <div className="px-4 py-3">
-              <div className="grid grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedFrame(null); saveFrame(null, showFrame); }}
-                  className={`relative flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-all ${!selectedFrame ? "border-violet-500 bg-violet-50" : "border-gray-100 hover:border-violet-200"}`}
-                >
-                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300 text-xs">ไม่มี</div>
-                  {!selectedFrame && <Check className="absolute top-1 right-1 w-3 h-3 text-violet-600" />}
-                </button>
-                {FRAMES.filter((f) => canUseFrame(f, vipLevel)).map((frame) => (
-                  <button
-                    key={frame.id}
-                    type="button"
-                    onClick={() => { setSelectedFrame(frame.id); saveFrame(frame.id, showFrame); }}
-                    className={`relative flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-all ${selectedFrame === frame.id ? "border-violet-500 bg-violet-50" : "border-gray-100 hover:border-violet-200"}`}
-                  >
-                    <UserAvatar src={form.avatar} fallback={displayName[0]} className="w-14 h-14" frameId={frame.id} />
-                    <span className="text-[10px] text-gray-500 truncate w-full text-center">{frame.name}</span>
-                    {selectedFrame === frame.id && <Check className="absolute top-1 right-1 w-3 h-3 text-violet-600" />}
-                  </button>
-                ))}
-              </div>
-              {FRAMES.filter((f) => !canUseFrame(f, vipLevel)).length > 0 && (
-                <>
-                  <p className="text-xs text-gray-400 mt-3 mb-2">ต้องการ VIP ระดับสูงกว่า</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {FRAMES.filter((f) => !canUseFrame(f, vipLevel)).map((frame) => (
-                      <div key={frame.id} className="flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 border-gray-100 opacity-40">
-                        <div className="relative w-14 h-14">
-                          <UserAvatar src={form.avatar} fallback={displayName[0]} className="w-14 h-14" frameId={frame.id} />
-                          <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">{frame.minVip.toUpperCase()[0]}</span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-gray-400 truncate w-full text-center">{frame.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {savingFrame && <p className="text-xs text-violet-500 text-center mt-2">กำลังบันทึก...</p>}
-            </div>
-          </div>
-        )}
+        {/* ─── Fields ─── */}
+        <div className="px-4 space-y-3">
 
-        {/* ─── Basic info ─── */}
-        <div className="mx-4 mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <p className="px-4 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">ข้อมูลพื้นฐาน</p>
-          <div className="px-4 pb-4 space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">ชื่อที่แสดง</label>
-              <input
-                value={form.nickname}
-                onChange={(e) => setForm({ ...form, nickname: e.target.value })}
-                placeholder="ชื่อเล่น"
-                maxLength={30}
-                className="w-full h-10 px-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">เกี่ยวกับฉัน</label>
-              <textarea
-                value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                placeholder="บอกเล่าเกี่ยวกับตัวเอง..."
-                rows={3}
-                maxLength={200}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition resize-none"
-              />
-            </div>
-          </div>
-        </div>
+          {/* Nickname */}
+          <Field label="ชื่อที่แสดง">
+            <input
+              value={form.nickname}
+              onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+              placeholder="ชื่อเล่น"
+              maxLength={30}
+              className={inputCls}
+            />
+          </Field>
 
-        {/* ─── Personal details ─── */}
-        <div className="mx-4 mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <p className="px-4 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">ข้อมูลส่วนตัว</p>
-          <div className="px-4 pb-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">เพศ</label>
+          {/* Bio */}
+          <Field label="เกี่ยวกับฉัน">
+            <textarea
+              value={form.bio}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              placeholder="บอกเล่าเกี่ยวกับตัวเอง..."
+              rows={3}
+              maxLength={200}
+              className={`${inputCls} resize-none py-2.5 h-auto`}
+            />
+            <span className="absolute bottom-3 right-3 text-[11px] text-gray-300">{form.bio.length}/200</span>
+          </Field>
+
+          {/* Gender + Age */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="เพศ">
+              <div className="relative">
                 <select
                   value={form.gender}
                   onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                  className="w-full h-10 px-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition appearance-none"
+                  className={`${inputCls} appearance-none pr-8`}
                 >
                   <option value="other">ไม่ระบุ</option>
                   <option value="male">ชาย</option>
                   <option value="female">หญิง</option>
                 </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">อายุ</label>
-                <input
-                  type="number"
-                  value={form.age}
-                  onChange={(e) => setForm({ ...form, age: e.target.value })}
-                  placeholder="อายุ"
-                  min={13}
-                  max={100}
-                  className="w-full h-10 px-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">สถานะความสัมพันธ์</label>
+            </Field>
+            <Field label="อายุ">
+              <input
+                type="number"
+                value={form.age}
+                onChange={(e) => setForm({ ...form, age: e.target.value })}
+                placeholder="เช่น 22"
+                min={13} max={100}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+
+          {/* Relationship */}
+          <Field label="สถานะ">
+            <div className="relative">
               <select
                 value={form.relationship}
                 onChange={(e) => setForm({ ...form, relationship: e.target.value })}
-                className="w-full h-10 px-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition appearance-none"
+                className={`${inputCls} appearance-none pr-8`}
               >
-                <option value="single">โสด</option>
-                <option value="taken">คบแล้ว</option>
-                <option value="complicated">ซับซ้อน</option>
+                <option value="single">โสด 💫</option>
+                <option value="taken">คบแล้ว ❤️</option>
+                <option value="complicated">ซับซ้อน 🌀</option>
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">จังหวัด</label>
+          </Field>
+
+          {/* Province */}
+          <Field label="จังหวัด">
+            <div className="relative">
               <select
                 value={form.province}
                 onChange={(e) => setForm({ ...form, province: e.target.value })}
-                className="w-full h-10 px-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-violet-300 bg-white transition appearance-none"
+                className={`${inputCls} appearance-none pr-8`}
               >
                 <option value="">-- ไม่ระบุ --</option>
                 {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
-          </div>
-        </div>
+          </Field>
 
-        {/* ─── Friend request settings ─── */}
-        <div className="mx-4 mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <p className="px-4 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">การตั้งค่าคำขอเพิ่มเพื่อน</p>
-          <div className="px-4 pb-4 space-y-3">
+          {/* ─── Friend request ─── */}
+          <div className="pt-2">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">คำขอเพิ่มเพื่อน</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setFollowMode("free")}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${followMode === "free" ? "border-violet-500 bg-violet-50" : "border-gray-100 hover:border-violet-200"}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${followMode === "free" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}
               >
                 <span className="text-2xl">🆓</span>
-                <span className="text-sm font-semibold text-gray-700">ฟรี</span>
-                <span className="text-xs text-gray-400 text-center">ใครก็ส่งคำขอได้</span>
+                <div>
+                  <p className="text-sm font-semibold">ฟรี</p>
+                  <p className={`text-[11px] ${followMode === "free" ? "text-gray-300" : "text-gray-400"}`}>ใครก็ส่งได้</p>
+                </div>
               </button>
               <button
                 type="button"
                 onClick={() => setFollowMode("paid")}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${followMode === "paid" ? "border-amber-500 bg-amber-50" : "border-gray-100 hover:border-amber-200"}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${followMode === "paid" ? "border-amber-500 bg-amber-500 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-amber-200"}`}
               >
                 <span className="text-2xl">💳</span>
-                <span className="text-sm font-semibold text-gray-700">ชำระเงิน</span>
-                <span className="text-xs text-gray-400 text-center">ต้องจ่ายเงิน (Stripe)</span>
+                <div>
+                  <p className="text-sm font-semibold">ชำระเงิน</p>
+                  <p className={`text-[11px] ${followMode === "paid" ? "text-amber-100" : "text-gray-400"}`}>ต้องจ่าย</p>
+                </div>
               </button>
             </div>
 
             {followMode === "paid" && (
-              <div className="space-y-2 pt-1">
-                <label className="block text-xs font-semibold text-gray-600">ราคา (บาท)</label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">฿</span>
-                    <input
-                      type="number"
-                      value={followPrice}
-                      onChange={(e) => setFollowPrice(e.target.value)}
-                      min={1}
-                      max={9999}
-                      placeholder="99"
-                      className="w-full h-10 pl-7 pr-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-300 bg-white transition"
-                    />
-                  </div>
-                  <span className="text-sm text-gray-400 shrink-0">บาท / คำขอ</span>
+              <div className="mt-3 space-y-2">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">฿</span>
+                  <input
+                    type="number"
+                    value={followPrice}
+                    onChange={(e) => setFollowPrice(e.target.value)}
+                    min={1} max={9999}
+                    placeholder="99"
+                    className={`${inputCls} pl-7`}
+                  />
                 </div>
                 {paidThb > 0 && (
-                  <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-                    <span className="text-xs text-amber-700">คุณจะได้รับ 80%</span>
-                    <span className="text-sm font-bold text-amber-700">฿{earns}</span>
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
+                    <span className="text-xs text-amber-600">คุณได้รับ 80%</span>
+                    <span className="text-sm font-bold text-amber-600">฿{earns} / คำขอ</span>
                   </div>
                 )}
-                <p className="text-xs text-gray-400">ผู้ส่งคำขอชำระผ่าน Stripe — ระบบหัก 20% ค่าธรรมเนียม</p>
               </div>
             )}
           </div>
-        </div>
 
+        </div>
       </form>
+    </div>
+  );
+}
+
+const inputCls = "relative w-full h-11 px-3 text-[14px] bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-all placeholder-gray-300 text-gray-900";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">{label}</label>
+      {children}
     </div>
   );
 }

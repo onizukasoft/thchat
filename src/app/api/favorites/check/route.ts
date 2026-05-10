@@ -9,13 +9,20 @@ export async function GET(req: NextRequest) {
   const targetId = req.nextUrl.searchParams.get("targetId");
   if (!targetId) return NextResponse.json({ followed: false, status: null });
 
-  const follow = await prisma.follow.findUnique({
-    where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
-    select: { status: true },
-  });
+  const [outgoing, incoming] = await Promise.all([
+    prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
+      select: { status: true },
+    }),
+    prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: targetId, followingId: session.user.id } },
+      select: { status: true },
+    }),
+  ]);
 
   return NextResponse.json({
-    followed: !!follow,
-    status: follow?.status ?? null,
+    followed: !!outgoing,
+    status: outgoing?.status ?? null,
+    incomingPending: incoming?.status === "pending",
   });
 }

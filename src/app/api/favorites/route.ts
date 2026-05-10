@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/create-notification";
 import { stripe } from "@/lib/stripe";
+import { getPackageLimits } from "@/lib/packages";
 
 // GET — รายชื่อเพื่อนที่ accepted แล้ว + คำขอที่รอ
 export async function GET() {
@@ -39,6 +41,7 @@ export async function GET() {
 
 // POST — ส่งคำขอเพิ่มเพื่อน
 export async function POST(req: NextRequest) {
+  try {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
@@ -50,14 +53,24 @@ export async function POST(req: NextRequest) {
       where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
     }),
     prisma.user.findUnique({ where: { id: targetId }, select: { followPrice: true, nickname: true, username: true } }),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { nickname: true, username: true, coins: true } }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { nickname: true, username: true, coins: true, vipLevel: true, vipUntil: true } }),
   ]);
 
-  // ถ้ามีอยู่แล้ว → ยกเลิก
+  // ถ้ามีอยู่แล้ว → ยกเลิก + ลบ notification ที่ค้างด้วย
   if (existing) {
-    await prisma.follow.delete({
-      where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
-    });
+    await Promise.all([
+      prisma.follow.delete({
+        where: { followerId_followingId: { followerId: session.user.id, followingId: targetId } },
+      }),
+      prisma.notification.deleteMany({
+        where: {
+          userId: targetId,
+          type: "follow",
+          link: `/profile/${session.user.id}`,
+          body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
+        },
+      }),
+    ]);
     return NextResponse.json({ status: "cancelled" });
   }
 
@@ -94,21 +107,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ checkoutUrl: checkoutSession.url });
   }
 
-  // ฟรี
+  // ฟรี — เช็ค limit จำนวน pending ที่ส่งออกไป
+  const limits = getPackageLimits(me?.vipLevel, me?.vipUntil);
+  const pendingCount = await prisma.follow.count({
+    where: { followerId: session.user.id, status: "pending" },
+  });
+  if (pendingCount >= limits.maxPendingFriendRequests) {
+    return NextResponse.json({
+      error: "friend_limit",
+      message: `คุณส่งคำขอเต็มลิมิต ${limits.maxPendingFriendRequests} คำขอแล้ว (${limits.label})`,
+      limit: limits.maxPendingFriendRequests,
+    }, { status: 429 });
+  }
+
   await Promise.all([
     prisma.follow.create({ data: { followerId: session.user.id, followingId: targetId, status: "pending" } }),
-    prisma.notification.create({
-      data: {
-        userId: targetId,
-        type: "follow",
-        title: myName,
-        body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
-        link: `/profile/${session.user.id}`,
-      },
+    createNotification({
+      userId: targetId,
+      type: "follow",
+      title: myName,
+      body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
+      link: `/profile/${session.user.id}`,
     }),
   ]);
 
   return NextResponse.json({ status: "pending" });
+  } catch (err: any) {
+    console.error("[POST /api/favorites]", err?.message ?? err);
+    return NextResponse.json({ error: err?.message ?? "เกิดข้อผิดพลาด" }, { status: 500 });
+  }
 }
 
 // PATCH — ยอมรับ หรือ ปฏิเสธ
@@ -121,7 +148,18 @@ export async function PATCH(req: NextRequest) {
   const follow = await prisma.follow.findUnique({
     where: { followerId_followingId: { followerId, followingId: session.user.id } },
   });
-  if (!follow) return NextResponse.json({ error: "ไม่พบคำขอ" }, { status: 404 });
+  if (!follow) {
+    // ลบ notification ที่ค้างอยู่เพื่อไม่ให้กลับมาอีกตอน refresh
+    await prisma.notification.deleteMany({
+      where: {
+        userId: session.user.id,
+        type: "follow",
+        link: `/profile/${followerId}`,
+        body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
+      },
+    });
+    return NextResponse.json({ error: "ไม่พบคำขอ" }, { status: 404 });
+  }
 
   if (action === "accept") {
     const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { nickname: true, username: true } });
@@ -138,23 +176,41 @@ export async function PATCH(req: NextRequest) {
         update: { status: "accepted" },
         create: { followerId: session.user.id, followingId: followerId, status: "accepted" },
       }),
-      // แจ้งเตือนคนที่ส่งคำขอว่าได้รับการยอมรับ
-      prisma.notification.create({
-        data: {
-          userId: followerId,
+      // อัปเดต notification เป็น "รับเพื่อนแล้ว" แทนการลบ
+      prisma.notification.updateMany({
+        where: {
+          userId: session.user.id,
           type: "follow",
-          title: name,
-          body: "ยอมรับคำขอเพิ่มเพื่อนของคุณแล้ว 🎉",
-          link: `/profile/${session.user.id}`,
+          link: `/profile/${followerId}`,
+          body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
         },
+        data: { body: "รับเพื่อนแล้ว ✓" },
+      }),
+      // แจ้งเตือนคนที่ส่งคำขอว่าได้รับการยอมรับ
+      createNotification({
+        userId: followerId,
+        type: "follow",
+        title: name,
+        body: "ยอมรับคำขอเพิ่มเพื่อนของคุณแล้ว 🎉",
+        link: `/profile/${session.user.id}`,
       }),
     ]);
     return NextResponse.json({ status: "accepted" });
   }
 
-  // reject
-  await prisma.follow.delete({
-    where: { followerId_followingId: { followerId, followingId: session.user.id } },
-  });
+  // reject — ลบ follow + ลบ notification ที่ค้างด้วย
+  await Promise.all([
+    prisma.follow.delete({
+      where: { followerId_followingId: { followerId, followingId: session.user.id } },
+    }),
+    prisma.notification.deleteMany({
+      where: {
+        userId: session.user.id,
+        type: "follow",
+        link: `/profile/${followerId}`,
+        body: "ส่งคำขอเพิ่มเพื่อนหาคุณ",
+      },
+    }),
+  ]);
   return NextResponse.json({ status: "rejected" });
 }

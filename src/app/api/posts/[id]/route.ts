@@ -16,9 +16,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
   if (!post) return NextResponse.json({ error: "ไม่พบโพสต์" }, { status: 404 });
-
-  await prisma.post.update({ where: { id }, data: { views: { increment: 1 } } });
   return NextResponse.json(post);
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const body = await req.json().catch(() => ({}));
+  if (body.action !== "view") return NextResponse.json({ error: "invalid" }, { status: 400 });
+  await prisma.post.update({ where: { id }, data: { views: { increment: 1 } } }).catch(() => {});
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

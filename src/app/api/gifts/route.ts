@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/create-notification";
 import { HEART_REDEEM_OFFERS } from "@/lib/heart-redeem";
 
 const GIFT_PRICES: Record<string, number> = {
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     prisma.user.update({ where: { id: receiverId }, data: { coins: { increment: Math.floor(cost * 0.7) } } }),
     prisma.coinTransaction.create({ data: { userId: session.user.id, amount: -cost, type: "gift_send", description: `ส่งของขวัญ ${giftType}` } }),
     prisma.coinTransaction.create({ data: { userId: receiverId, amount: Math.floor(cost * 0.7), type: "gift_receive", description: `รับของขวัญ ${giftType}` } }),
-    prisma.notification.create({ data: { userId: receiverId, type: "gift", title: "ได้รับของขวัญ!", body: `มีคนส่ง ${giftType} ให้คุณ`, link: "/gifts" } }),
+    createNotification({ userId: receiverId, type: "gift", title: "ได้รับของขวัญ!", body: `มีคนส่ง ${giftType} ให้คุณ`, link: "/gifts" }),
   ]);
 
   return NextResponse.json(gift, { status: 201 });

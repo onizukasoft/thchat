@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { MessageCircle, Search } from "lucide-react";
+import { getSocket } from "@/lib/socket-client";
 
 type Conversation = {
   partner: {
@@ -20,6 +21,7 @@ type Conversation = {
   lastMessage: string;
   lastMessageAt: string;
   isRead: boolean;
+  unreadCount: number;
 };
 
 export default function ChatListPage() {
@@ -27,13 +29,24 @@ export default function ChatListPage() {
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
+  function loadConvs() {
     fetch("/api/messages/recent")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setConvs(d); })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    loadConvs();
+
+    const socket = getSocket();
+    socket.on("message:receive", loadConvs);
+    socket.on("message:sent", loadConvs);
+    return () => {
+      socket.off("message:receive", loadConvs);
+      socket.off("message:sent", loadConvs);
+    };
   }, [session?.user?.id]);
 
   const filtered = convs.filter((c) => {
@@ -55,9 +68,9 @@ export default function ChatListPage() {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <h1 className="text-lg font-bold text-gray-800 dark:text-white">แชท</h1>
-        {convs.filter((c) => !c.isRead).length > 0 && (
+        {convs.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0) > 0 && (
           <span className="bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-            {convs.filter((c) => !c.isRead).length}
+            {convs.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)}
           </span>
         )}
       </div>
@@ -111,8 +124,10 @@ export default function ChatListPage() {
                   {c.lastMessage}
                 </p>
               </div>
-              {!c.isRead && (
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+              {c.unreadCount > 0 && (
+                <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold shrink-0">
+                  {c.unreadCount > 99 ? "99+" : c.unreadCount}
+                </span>
               )}
             </Link>
           ))

@@ -8,6 +8,7 @@ import {
   Video, Loader2, LayoutGrid, Heart, Laugh, Newspaper, HelpCircle,
   Play, PenLine, Send, Globe, Users, ChevronRight,
 } from "lucide-react";
+import { consumePendingCreate } from "@/lib/pending-create";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import type { LucideIcon } from "lucide-react";
@@ -209,6 +210,11 @@ export default function BoardPage() {
 
   useEffect(() => { loadFeed(activeCategory); }, [activeCategory, loadFeed]);
 
+  useEffect(() => {
+    const mode = consumePendingCreate();
+    if (mode === "post") setCreating(true);
+  }, []);
+
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     Array.from(e.target.files ?? []).slice(0, 9 - mediaFiles.length).forEach((file) => {
       setMediaFiles((p) => [...p, { file, preview: URL.createObjectURL(file), type: file.type.startsWith("video/") ? "video" : "image" }]);
@@ -254,10 +260,10 @@ export default function BoardPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between py-1">
-        <h1 className="text-xl font-bold text-gray-900">กระดาน</h1>
+        <h1 className="text-xl font-bold text-gray-900">โพสต์</h1>
         {session?.user && (
           <button onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-purple-200">
+            className="hidden md:flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-purple-200">
             <Plus className="w-4 h-4" />โพสต์ใหม่
           </button>
         )}
@@ -317,7 +323,7 @@ export default function BoardPage() {
 
       {/* ── Create post modal ── */}
       {creating && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">โพสต์ใหม่</h2>

@@ -130,6 +130,24 @@ type DashData = {
 
 const QUICK_LINKS = [{ icon: "🎴", label: "ป็อกเด้ง", href: "/games/pokdeng", color: "bg-emerald-50" }];
 
+function BioText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+            className="text-blue-500 underline underline-offset-2 break-all hover:text-blue-600">
+            {part}
+          </a>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 type FloatingHeart = { id: number; x: number; y: number; rotate: number };
 
 export default function ProfilePage() {
@@ -145,7 +163,9 @@ export default function ProfilePage() {
   const [clips, setClips] = useState<{ id: string; title: string; thumbnailUrl: string | null; videoUrl: string | null; isSubscriberOnly: boolean; hasAccess: boolean; views: number }[]>([]);
   const [creatorProfile, setCreatorProfile] = useState<{ monthlyPrice: number } | null | undefined>(undefined); // undefined=loading, null=not creator
   const [followed, setFollowed] = useState(false);
+  const [followStatus, setFollowStatus] = useState<string | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
+  const [incomingPending, setIncomingPending] = useState(false);
   const [votedToday, setVotedToday] = useState(false);
   const [pinLoadingId, setPinLoadingId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -215,9 +235,25 @@ export default function ProfilePage() {
   useEffect(() => {
     if (session?.user?.id && session.user.id !== userId) {
       fetch(`/api/users/${userId}/heart`).then((r) => r.json()).then((d) => setVotedToday(d.votedToday));
-      fetch(`/api/favorites/check?targetId=${userId}`).then((r) => r.json()).then((d) => setFollowed(d.followed ?? false)).catch(() => {});
+      fetch(`/api/favorites/check?targetId=${userId}`).then((r) => r.json()).then((d) => {
+        setFollowed(d.followed ?? false);
+        setFollowStatus(d.status ?? null);
+        setIncomingPending(d.incomingPending ?? false);
+      }).catch(() => {});
     }
   }, [session, userId]);
+
+  async function handleRespond(action: "accept" | "reject") {
+    setFollowLoading(true);
+    await fetch("/api/favorites", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ followerId: userId, action }),
+    });
+    setIncomingPending(false);
+    if (action === "accept") { setFollowed(true); setFollowStatus("accepted"); }
+    setFollowLoading(false);
+  }
 
   async function handleFollow() {
     if (!session?.user?.id) return;
@@ -227,13 +263,14 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ targetId: userId }),
     });
-    const data = await res.json();
-    if (data.checkoutUrl) {
-      window.location.href = data.checkoutUrl;
-      return;
-    }
-    setFollowed(data.status === "pending" || data.status === "accepted");
+    let data: any = {};
+    try { data = await res.json(); } catch {}
     setFollowLoading(false);
+    if (!res.ok && data.error) { alert(data.error); return; }
+    if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+    if (data.error === "friend_limit") { alert(data.message); return; }
+    if (data.status === "pending") { setFollowed(true); setFollowStatus("pending"); }
+    else if (data.status === "cancelled") { setFollowed(false); setFollowStatus(null); }
   }
 
   async function giveHearts(amount: number) {
@@ -394,7 +431,7 @@ export default function ProfilePage() {
         </div>
 
         {/* bio */}
-        {user.bio && <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 leading-relaxed px-5">{user.bio}</p>}
+        {user.bio && <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 leading-relaxed px-5"><BioText text={user.bio} /></p>}
 
         {/* info chips */}
         <div className="flex flex-wrap justify-center gap-2 mb-4 px-4">
@@ -441,26 +478,52 @@ export default function ProfilePage() {
             <Link href={`/gifts?to=${userId}`} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
               <Gift className="w-4 h-4" /> ของขวัญ
             </Link>
-            <button
-              onClick={handleFollow}
-              disabled={followLoading}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
-                followed
-                  ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  : user.followPrice && user.followPrice > 0
-                    ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-white hover:from-yellow-600 hover:to-amber-600"
-                    : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100"
-              }`}
-            >
-              {followLoading
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : followed
-                  ? <><UserCheck className="w-4 h-4" /> ส่งแล้ว</>
-                  : user.followPrice && user.followPrice > 0
-                    ? <>฿{(user.followPrice / 100).toFixed(0)} เพิ่มเพื่อน</>
-                    : <><UserPlus className="w-4 h-4" /> เพิ่มเพื่อน</>
-              }
-            </button>
+
+            {incomingPending ? (
+              /* มีคำขอเข้ามาจากอีกฝ่าย — แสดงยอมรับ/ปฏิเสธ */
+              <div className="flex-1 flex gap-1.5">
+                <button
+                  onClick={() => handleRespond("accept")}
+                  disabled={followLoading}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                >
+                  {followLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UserCheck className="w-4 h-4" /> ยอมรับ</>}
+                </button>
+                <button
+                  onClick={() => handleRespond("reject")}
+                  disabled={followLoading}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm font-semibold transition-colors disabled:opacity-60 hover:bg-gray-200"
+                >
+                  ปฏิเสธ
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleFollow}
+                disabled={followLoading}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
+                  followStatus === "accepted"
+                    ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"
+                    : followed
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                      : user.followPrice && user.followPrice > 0
+                        ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-white hover:from-yellow-600 hover:to-amber-600"
+                        : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100"
+                }`}
+              >
+                {followLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : followStatus === "accepted"
+                    ? <><UserCheck className="w-4 h-4" /> เพื่อนแล้ว</>
+                    : followed
+                      ? <><UserCheck className="w-4 h-4" /> รออยู่</>
+                      : user.followPrice && user.followPrice > 0
+                        ? <>฿{(user.followPrice / 100).toFixed(0)} เพิ่มเพื่อน</>
+                        : <><UserPlus className="w-4 h-4" /> เพิ่มเพื่อน</>
+                }
+              </button>
+            )}
+
             <Link href={`/chat/${userId}`} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors">
               <MessageCircle className="w-4 h-4" /> แชท
             </Link>

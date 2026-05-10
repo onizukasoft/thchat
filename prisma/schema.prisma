@@ -31,6 +31,7 @@ model User {
   vipUntil          DateTime?
   showOnlineStatus  Boolean  @default(true)
   showProfileFrame  Boolean  @default(false)
+  allowCalls        Boolean  @default(true)
   profileFrameId    String?
   followPrice       Int?     // satang (THB*100) e.g. 9900 = 99฿
   followEarned      Int      @default(0)
@@ -62,6 +63,7 @@ model User {
   creatorProfile    CreatorProfile?
   clipSubscriptions ClipSubscription[] @relation("ClipSubscriber")
   clipPurchases     ClipPurchase[]     @relation("ClipPurchases")
+  postPurchases     PostPurchase[]     @relation("PostPurchases")
 }
 
 model Message {
@@ -118,13 +120,29 @@ model Post {
   category  String   @default("general")
   isPinned  Boolean  @default(false)
   mediaUrls String?  // JSON array: [{url, type}]
+  isPaid    Boolean  @default(false)
+  price     Int      @default(0)  // price in coins
   views     Int      @default(0)
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments Comment[]
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  purchases PostPurchase[]
+}
+
+model PostPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  price     Int
+  createdAt DateTime @default(now())
+
+  user User @relation("PostPurchases", fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
 }
 
 model Comment {

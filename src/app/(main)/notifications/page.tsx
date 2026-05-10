@@ -1,13 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RefreshCw, MoreVertical, Bell } from "lucide-react";
+import { RefreshCw, MoreVertical, Bell, UserCheck, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
+import { getSocket } from "@/lib/socket-client";
 
 type Notif = {
   id: string; type: string; title: string; body: string;
   link: string | null; isRead: boolean; createdAt: string;
+  senderAvatar: string | null;
 };
 
 const TYPE_CONFIG: Record<string, { icon: string; bg: string }> = {
@@ -34,6 +36,7 @@ const SYSTEM_AVATAR = (
 export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -43,7 +46,41 @@ export default function NotificationsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load().then(markAllRead); }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const onNew = () => load();
+    socket.on("notification:new", onNew);
+    return () => { socket.off("notification:new", onNew); };
+  }, []);
+
+  async function respondFollow(followerId: string, action: "accept" | "reject", notifId: string) {
+    setRespondingId(notifId);
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followerId, action }),
+      });
+      if (res.ok) {
+        if (action === "accept") {
+          // เปลี่ยน body เป็น "รับเพื่อนแล้ว" แทนการลบ
+          setNotifs((prev) => prev.map((n) =>
+            n.id === notifId ? { ...n, body: "รับเพื่อนแล้ว ✓" } : n
+          ));
+        } else {
+          // ปฏิเสธ → ลบออกจากลิสต์
+          setNotifs((prev) => prev.filter((n) => n.id !== notifId));
+        }
+      } else if (res.status === 404) {
+        // stale request — ลบออกเลย
+        setNotifs((prev) => prev.filter((n) => n.id !== notifId));
+      }
+    } finally {
+      setRespondingId(null);
+    }
+  }
 
   async function markAllRead() {
     await fetch("/api/notifications", { method: "PATCH" });
@@ -81,17 +118,21 @@ export default function NotificationsPage() {
             const cfg = TYPE_CONFIG[n.type] ?? { icon: "🔔", bg: "bg-gray-400" };
             const time = formatDistanceToNow(new Date(n.createdAt), { addSuffix: false, locale: th });
             const isSystemType = isSystem(n.type);
+            // คำขอเพิ่มเพื่อน — ดึง followerId จาก link "/profile/:id"
+            const isFollowRequest = n.type === "follow" && n.body.includes("ส่งคำขอเพิ่มเพื่อน");
+            const followerId = isFollowRequest && n.link ? n.link.split("/profile/")[1] : null;
 
             const inner = (
-              <div className={`flex items-center gap-3 px-3 py-3.5 hover:bg-gray-50 transition-colors ${!n.isRead ? "bg-blue-50/60" : "bg-white"}`}>
+              <div className={`flex items-start gap-3 px-3 py-3.5 hover:bg-gray-50 transition-colors ${!n.isRead ? "bg-blue-50/60" : "bg-white"}`}>
                 {/* Avatar */}
                 <div className="relative shrink-0">
-                  {isSystemType ? SYSTEM_AVATAR : (
-                    <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center shadow-sm">
-                      <span className="text-white text-2xl">😊</span>
+                  {isSystemType ? SYSTEM_AVATAR : n.senderAvatar ? (
+                    <img src={n.senderAvatar} alt="" className="w-14 h-14 rounded-2xl object-cover shadow-sm" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-sm">
+                      <span className="text-white text-xl font-bold">{n.title[0]?.toUpperCase()}</span>
                     </div>
                   )}
-                  {/* Icon badge */}
                   <div className={`absolute -bottom-1 -right-1 w-6 h-6 ${cfg.bg} rounded-full flex items-center justify-center text-xs shadow-md border-2 border-white`}>
                     {cfg.icon}
                   </div>
@@ -103,6 +144,27 @@ export default function NotificationsPage() {
                     <span className="font-bold">{n.title}</span>
                   </p>
                   <p className="text-sm text-gray-600 mt-0.5 leading-snug">{n.body}</p>
+
+                  {/* ปุ่มยอมรับ/ปฏิเสธ inline */}
+                  {isFollowRequest && followerId && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={(e) => { e.preventDefault(); respondFollow(followerId, "accept", n.id); }}
+                        disabled={respondingId === n.id}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {respondingId === n.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                        ยอมรับ
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); respondFollow(followerId, "reject", n.id); }}
+                        disabled={respondingId === n.id}
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        ปฏิเสธ
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Time + unread dot */}
@@ -113,7 +175,7 @@ export default function NotificationsPage() {
               </div>
             );
 
-            return n.link ? (
+            return n.link && !isFollowRequest ? (
               <Link key={n.id} href={n.link}>{inner}</Link>
             ) : (
               <div key={n.id}>{inner}</div>

@@ -22,6 +22,7 @@ type VipSettings = {
   showOnlineStatus: boolean;
   showProfileFrame: boolean;
   profileFrameId: string | null;
+  allowCalls: boolean;
   avatar: string | null;
   lastSeen: string;
 };
@@ -176,6 +177,24 @@ export default function PackagesPage() {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <div className="w-3 h-3 rounded-full bg-orange-400 shrink-0" />
             <span>สถานะออฟไลน์ {offlineTime}</span>
+          </div>
+        </div>
+
+        {/* Call settings */}
+        <div className="bg-white rounded-2xl border p-5 space-y-3">
+          <h2 className="font-bold">ตั้งค่าการโทร</h2>
+          <p className="text-xs text-gray-400">เฉพาะเพื่อนที่ยอมรับแล้วเท่านั้นที่โทรหาคุณได้</p>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700">รับสายโทร / วิดีโอคอล</span>
+            <button
+              onClick={() => patch({ allowCalls: !settings.allowCalls })}
+              className="flex items-center gap-2"
+            >
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${settings.allowCalls ? "bg-pink-500" : "bg-gray-300"}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.allowCalls ? "translate-x-5" : "translate-x-0.5"}`} />
+              </div>
+              <span className="text-sm text-gray-500">{settings.allowCalls ? "เปิด" : "ปิด"}</span>
+            </button>
           </div>
         </div>
 

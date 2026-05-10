@@ -43,16 +43,41 @@ export async function POST(req: Request) {
       const satang = parseInt(amount, 10);
       const earns = Math.round(satang * 0.8);
 
+      const sender = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { nickname: true, username: true },
+      });
+      const senderName = sender?.nickname || sender?.username || "ผู้ใช้";
+
+      // paid → auto-accept ทันที ไม่ต้องรอยืนยัน
       await prisma.$transaction([
-        prisma.follow.create({ data: { followerId: userId, followingId: targetId, status: "pending" } }),
+        prisma.follow.upsert({
+          where: { followerId_followingId: { followerId: userId, followingId: targetId } },
+          update: { status: "accepted" },
+          create: { followerId: userId, followingId: targetId, status: "accepted" },
+        }),
+        prisma.follow.upsert({
+          where: { followerId_followingId: { followerId: targetId, followingId: userId } },
+          update: { status: "accepted" },
+          create: { followerId: targetId, followingId: userId, status: "accepted" },
+        }),
         prisma.user.update({ where: { id: targetId }, data: { followEarned: { increment: earns } } }),
         prisma.notification.create({
           data: {
             userId: targetId,
             type: "follow",
-            title: "คำขอเพิ่มเพื่อน",
-            body: `มีคนส่งคำขอเพิ่มเพื่อนพร้อมชำระ ฿${(satang / 100).toFixed(0)}`,
-            link: `/profile/${userId}`,
+            title: senderName,
+            body: `ชำระ ฿${(satang / 100).toFixed(0)} เพื่อเพิ่มคุณเป็นเพื่อน — แชทได้เลย!`,
+            link: `/chat/${userId}`,
+          },
+        }),
+        prisma.notification.create({
+          data: {
+            userId,
+            type: "follow",
+            title: "เพิ่มเพื่อนสำเร็จ",
+            body: "ชำระเงินสำเร็จ — ตอนนี้เป็นเพื่อนกันแล้ว แชทได้เลย!",
+            link: `/chat/${targetId}`,
           },
         }),
       ]);

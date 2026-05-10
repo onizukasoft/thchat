@@ -28,13 +28,23 @@ export async function GET() {
     if (!convMap.has(partnerId)) convMap.set(partnerId, msg);
   }
 
+  // Count unread messages per sender
+  const unreadGroups = await prisma.message.groupBy({
+    by: ["senderId"],
+    where: { receiverId: session.user.id, isRead: false },
+    _count: { id: true },
+  });
+  const unreadMap = new Map(unreadGroups.map((g) => [g.senderId, g._count.id]));
+
   const conversations = Array.from(convMap.values()).map((msg) => {
     const partner = msg.senderId === session.user!.id ? msg.receiver : msg.sender;
+    const unreadCount = unreadMap.get(partner.id) ?? 0;
     return {
       partner,
       lastMessage: msg.content,
       lastMessageAt: msg.createdAt,
-      isRead: msg.isRead || msg.senderId === session.user!.id,
+      isRead: unreadCount === 0,
+      unreadCount,
     };
   });
 

@@ -53,7 +53,19 @@ export default function PostPage() {
     setPost(data);
   }, [postId]);
 
-  useEffect(() => { fetchPost(); }, [fetchPost]);
+  useEffect(() => {
+    fetchPost();
+    // Count view once per session per post
+    const key = `viewed_post_${postId}`;
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, "1");
+      fetch(`/api/posts/${postId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "view" }),
+      }).catch(() => {});
+    }
+  }, [fetchPost, postId]);
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault();

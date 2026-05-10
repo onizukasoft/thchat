@@ -14,6 +14,7 @@ export async function GET() {
       showOnlineStatus: true,
       showProfileFrame: true,
       profileFrameId: true,
+      allowCalls: true,
       avatar: true,
       lastSeen: true,
     },
@@ -31,10 +32,12 @@ export async function PATCH(req: Request) {
     showOnlineStatus?: boolean;
     showProfileFrame?: boolean;
     profileFrameId?: string | null;
+    allowCalls?: boolean;
   } = {};
   if (typeof body.showOnlineStatus === "boolean") data.showOnlineStatus = body.showOnlineStatus;
   if (typeof body.showProfileFrame === "boolean") data.showProfileFrame = body.showProfileFrame;
   if ("profileFrameId" in body) data.profileFrameId = body.profileFrameId ?? null;
+  if (typeof body.allowCalls === "boolean") data.allowCalls = body.allowCalls;
 
   const user = await prisma.user.update({
     where: { id: session.user.id },
@@ -43,6 +46,7 @@ export async function PATCH(req: Request) {
       showOnlineStatus: true,
       showProfileFrame: true,
       profileFrameId: true,
+      allowCalls: true,
     },
   });
 
