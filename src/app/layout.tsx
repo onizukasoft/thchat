@@ -3,7 +3,7 @@ import { Sarabun } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const BASE_URL = "https://thchat.com";
+const BASE_URL = "https://thchat.net";
 
 const jsonLd = {
   "@context": "https://schema.org",

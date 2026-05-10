@@ -1,6 +1,6 @@
 import { MetadataRoute } from "next";
 
-const BASE = "https://thchat.com";
+const BASE = "https://thchat.net";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [

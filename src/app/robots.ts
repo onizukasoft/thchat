@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/chat/", "/profile/", "/admin/", "/coins/", "/gifts/", "/favorites/", "/notifications/"],
       },
     ],
-    sitemap: "https://thchat.com/sitemap.xml",
-    host: "https://thchat.com",
+    sitemap: "https://thchat.net/sitemap.xml",
+    host: "https://thchat.net",
   };
 }
