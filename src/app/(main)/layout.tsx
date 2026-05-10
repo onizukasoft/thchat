@@ -4,6 +4,7 @@ import { TopNavbar } from "@/components/top-navbar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SidebarProvider } from "@/lib/sidebar-store";
 import { GlobalCallHandler } from "@/components/global-call-handler";
+import { CookieConsent } from "@/components/cookie-consent";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <RightSidebar />
         <MobileBottomNav />
         <GlobalCallHandler />
+        <CookieConsent />
       </div>
     </SidebarProvider>
   );

@@ -9,6 +9,7 @@ import {
   Play, PenLine, Send, Globe, Users, ChevronRight,
 } from "lucide-react";
 import { consumePendingCreate } from "@/lib/pending-create";
+import { AdBanner } from "@/components/adsense";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import type { LucideIcon } from "lucide-react";
@@ -424,8 +425,13 @@ export default function BoardPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {feed.map((post) => (
-            <PostCard key={post.id} post={post} isFriend={friendIds.has(post.user.id)} />
+          {feed.map((post, i) => (
+            <>
+              <PostCard key={post.id} post={post} isFriend={friendIds.has(post.user.id)} />
+              {(i + 1) % 5 === 0 && (
+                <AdBanner key={`ad-${i}`} slot="BOARD_FEED_SLOT" format="horizontal" className="rounded-2xl overflow-hidden" />
+              )}
+            </>
           ))}
         </div>
       )}

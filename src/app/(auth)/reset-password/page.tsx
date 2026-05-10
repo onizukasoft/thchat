@@ -4,6 +4,26 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { KeyRound, Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
 
+function pwStrength(pw: string) {
+  const checks = {
+    length: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  const level = score <= 2 ? "weak" : score === 3 ? "fair" : score === 4 ? "good" : "strong";
+  return { checks, score, level };
+}
+
+const STRENGTH_LABEL: Record<string, { label: string; color: string; bar: string }> = {
+  weak:   { label: "อ่อนแอ",   color: "text-red-500",    bar: "bg-red-400"    },
+  fair:   { label: "พอใช้",    color: "text-orange-500", bar: "bg-orange-400" },
+  good:   { label: "ดี",       color: "text-yellow-600", bar: "bg-yellow-400" },
+  strong: { label: "แข็งแกร่ง", color: "text-green-600",  bar: "bg-green-500"  },
+};
+
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -12,6 +32,7 @@ function ResetPasswordContent() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
@@ -30,86 +51,130 @@ function ResetPasswordContent() {
     setLoading(false);
     if (!res.ok) { setError(data.error); return; }
     setDone(true);
-    setTimeout(() => router.push("/login"), 2000);
+    setTimeout(() => router.push("/login"), 2500);
   }
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-950 via-purple-900 to-pink-900 p-4">
-        <div className="text-center text-white">
-          <p className="text-white/60 mb-4">ลิงก์ไม่ถูกต้อง</p>
-          <Link href="/forgot-password" className="text-purple-300 hover:text-white text-sm">ขอลิงก์ใหม่</Link>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="text-center">
+          <p className="text-gray-500 mb-3 text-sm">ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว</p>
+          <Link href="/forgot-password" className="text-sm font-medium text-gray-900 underline underline-offset-4">
+            ขอลิงก์ใหม่
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-950 via-purple-900 to-pink-900 p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-sm">
 
-      <div className="relative w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
-          {!done ? (
-            <>
-              <div className="mb-6">
-                <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4">
-                  <KeyRound className="w-7 h-7 text-purple-300" />
-                </div>
-                <h1 className="text-2xl font-bold text-white mb-1">ตั้งรหัสผ่านใหม่</h1>
-                <p className="text-white/60 text-sm">กรอกรหัสผ่านใหม่ของคุณ</p>
+        {!done ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            {/* Icon + heading */}
+            <div className="mb-7">
+              <div className="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center mb-5">
+                <KeyRound className="w-5 h-5 text-gray-600" />
               </div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">ตั้งรหัสผ่านใหม่</h1>
+              <p className="text-sm text-gray-400">ต้องมีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลขอย่างน้อย 8 ตัว</p>
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Password */}
+              <div>
                 <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
+                    placeholder="รหัสผ่านใหม่"
                     required
-                    minLength={6}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-10 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                    minLength={8}
+                    className="w-full h-11 px-3 pr-10 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-all placeholder-gray-300 text-gray-900"
                   />
-                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                  >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                  <input
-                    type={showPw ? "text" : "password"}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    placeholder="ยืนยันรหัสผ่านใหม่"
-                    required
-                    className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
-                  />
-                </div>
-                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังบันทึก...</> : "บันทึกรหัสผ่านใหม่"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-8 h-8 text-green-400" />
+                {password.length > 0 && (() => {
+                  const { checks, score, level } = pwStrength(password);
+                  const s = STRENGTH_LABEL[level];
+                  return (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex gap-1">
+                        {[1,2,3,4,5].map((i) => (
+                          <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? s.bar : "bg-gray-100"}`} />
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-medium ${s.color}`}>{s.label}</span>
+                        <div className="flex gap-2.5">
+                          {[
+                            { ok: checks.length,  label: "8+ ตัว" },
+                            { ok: checks.upper,   label: "A-Z" },
+                            { ok: checks.lower,   label: "a-z" },
+                            { ok: checks.number,  label: "0-9" },
+                          ].map(({ ok, label }) => (
+                            <span key={label} className={`text-[10px] ${ok ? "text-green-600 font-semibold" : "text-gray-300"}`}>
+                              {ok ? "✓" : "○"} {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">เปลี่ยนรหัสผ่านแล้ว!</h2>
-              <p className="text-white/60 text-sm">กำลังพาคุณไปหน้าเข้าสู่ระบบ...</p>
+
+              {/* Confirm */}
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="ยืนยันรหัสผ่านใหม่"
+                  required
+                  className="w-full h-11 px-3 pr-10 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-all placeholder-gray-300 text-gray-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {error && (
+                <p className="text-xs text-red-500 px-1">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+              >
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังบันทึก...</> : "บันทึกรหัสผ่านใหม่"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-6 h-6 text-gray-700" />
             </div>
-          )}
-        </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">เปลี่ยนรหัสผ่านแล้ว</h2>
+            <p className="text-sm text-gray-400">กำลังพาคุณไปหน้าเข้าสู่ระบบ...</p>
+          </div>
+        )}
+
       </div>
     </div>
   );

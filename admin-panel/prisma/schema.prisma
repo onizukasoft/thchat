@@ -281,3 +281,31 @@ model WithdrawalRequest {
 
   creator CreatorProfile @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
 }
+
+model Partner {
+  id           String   @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  bankAccount  String?
+  bankName     String?
+  sharePercent Float    @default(0)
+  totalPaid    Float    @default(0)
+  notes        String?
+  isActive     Boolean  @default(true)
+  pin          String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  payments PartnerPayment[]
+}
+
+model PartnerPayment {
+  id        String   @id @default(cuid())
+  partnerId String
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+}

@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // Always respond success to prevent email enumeration
-  if (!user) return NextResponse.json({ ok: true });
+  if (!user) return NextResponse.json({ error: "ไม่พบอีเมลนี้ในระบบ" }, { status: 404 });
 
   const token = crypto.randomBytes(32).toString("hex");
   const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour

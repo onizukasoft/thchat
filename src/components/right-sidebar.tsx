@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Search } from "lucide-react";
+import { AdBanner } from "@/components/adsense";
 
 type Conversation = {
   partner: { id: string; username: string; nickname: string | null; avatar: string | null; isOnline: boolean; profileFrameId?: string | null; showProfileFrame?: boolean };
@@ -77,8 +78,9 @@ export function RightSidebar() {
         )}
       </div>
 
-      <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-800">
-        <Link href="/chat" className="text-xs text-blue-500 hover:underline">ดูแชททั้งหมด</Link>
+      <div className="px-2 py-2 border-t border-gray-100 dark:border-gray-800">
+        <AdBanner slot="RIGHT_SIDEBAR_SLOT" format="rectangle" className="rounded-xl overflow-hidden mb-2" />
+        <Link href="/chat" className="text-xs text-blue-500 hover:underline px-1">ดูแชททั้งหมด</Link>
       </div>
     </aside>
   );

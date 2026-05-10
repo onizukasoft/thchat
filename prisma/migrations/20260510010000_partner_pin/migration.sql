@@ -1,0 +1,1 @@
+ALTER TABLE "Partner" ADD COLUMN "pin" TEXT;

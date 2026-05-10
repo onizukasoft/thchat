@@ -15,6 +15,7 @@ import {
   MessageCircle, Users, X, Loader2, CheckCircle2, ShieldOff,
   BookmarkCheck, RotateCcw,
 } from "lucide-react";
+import { AdBanner } from "@/components/adsense";
 
 type UserCard = {
   id: string;
@@ -788,9 +789,15 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {paged.map((user) => {
+          {paged.map((user, i) => {
             const online = user.isOnline || onlineIds.includes(user.id);
             return (
+              <>
+                {i > 0 && i % 8 === 0 && (
+                  <div key={`ad-${i}`} className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-5">
+                    <AdBanner slot="HOME_FEED_SLOT" format="horizontal" className="rounded-2xl overflow-hidden" />
+                  </div>
+                )}
               <div
                 key={user.id}
                 className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative cursor-pointer"
@@ -872,6 +879,7 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
+              </>
             );
           })}
         </div>
